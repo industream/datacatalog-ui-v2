@@ -1,26 +1,18 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, inject, OnInit, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DecimalPipe } from '@angular/common';
 
 import '@carbon/web-components/es/components/button/index.js';
 import '@carbon/web-components/es/components/tile/index.js';
 
+import { CatalogStore } from '../../store';
+
 interface StatCard {
   label: string;
   value: number;
-  trend: 'up' | 'down' | 'stable';
-  trendValue: number;
   icon: string;
   color: string;
   link: string;
-}
-
-interface ActivityItem {
-  id: string;
-  type: 'create' | 'update' | 'delete' | 'import';
-  entityType: 'entry' | 'source' | 'label';
-  entityName: string;
-  timestamp: Date;
 }
 
 @Component({
@@ -35,91 +27,97 @@ interface ActivityItem {
         <p class="subtitle">Overview of your data catalog</p>
       </header>
 
-      <!-- Stats Grid -->
-      <section class="stats-grid">
-        @for (stat of stats(); track stat.label) {
-          <a [routerLink]="stat.link" class="stat-card" [style.--accent-color]="stat.color">
-            <div class="stat-icon">
-              <span class="material-symbols-outlined">{{ stat.icon }}</span>
-            </div>
-            <div class="stat-content">
-              <span class="stat-value">{{ stat.value | number }}</span>
-              <span class="stat-label">{{ stat.label }}</span>
-            </div>
-            <div class="stat-trend" [class]="stat.trend">
-              <span class="material-symbols-outlined trend-icon">
-                {{ stat.trend === 'up' ? 'trending_up' : stat.trend === 'down' ? 'trending_down' : 'trending_flat' }}
-              </span>
-              <span class="trend-value">
-                {{ stat.trend === 'stable' ? '—' : (stat.trend === 'up' ? '+' : '') + stat.trendValue }}
-              </span>
-            </div>
-          </a>
-        }
-      </section>
-
-      <!-- Main Content Grid -->
-      <div class="content-grid">
-        <!-- Distribution Chart -->
-        <section class="chart-section">
-          <h2>Entries by Source Type</h2>
-          <div class="chart-container">
-            @for (item of distribution(); track item.type) {
-              <div class="distribution-item">
-                <div class="distribution-bar" [style.width.%]="item.percentage" [style.background]="item.color"></div>
-                <div class="distribution-info">
-                  <span class="distribution-label">{{ item.type }}</span>
-                  <span class="distribution-value">{{ item.count }} ({{ item.percentage | number:'1.0-0' }}%)</span>
-                </div>
-              </div>
-            }
-          </div>
-        </section>
-
-        <!-- Recent Activity -->
-        <section class="activity-section">
-          <h2>Recent Activity</h2>
-          <div class="activity-list">
-            @for (activity of recentActivity(); track activity.id) {
-              <div class="activity-item">
-                <span class="material-symbols-outlined activity-icon" [class]="activity.type">
-                  {{ getActivityIcon(activity.type) }}
-                </span>
-                <div class="activity-content">
-                  <span class="activity-text">
-                    <strong>{{ activity.entityName }}</strong>
-                    {{ getActivityVerb(activity.type) }}
-                  </span>
-                  <span class="activity-time">{{ getRelativeTime(activity.timestamp) }}</span>
-                </div>
-              </div>
-            }
-          </div>
-        </section>
-      </div>
-
-      <!-- Quick Actions -->
-      <section class="quick-actions">
-        <h2>Quick Actions</h2>
-        <div class="actions-grid">
-          <cds-button kind="primary" routerLink="/explorer" (click)="onNewEntry()">
-            <span class="material-symbols-outlined" slot="icon">add</span>
-            New Entry
-          </cds-button>
-          <cds-button kind="secondary" routerLink="/sources">
-            <span class="material-symbols-outlined" slot="icon">cable</span>
-            New Source
-          </cds-button>
-          <cds-button kind="tertiary">
-            <span class="material-symbols-outlined" slot="icon">upload</span>
-            Import CSV
-          </cds-button>
-          <cds-button kind="ghost">
-            <span class="material-symbols-outlined" slot="icon">download</span>
-            Export All
-          </cds-button>
+      @if (store.loading()) {
+        <div class="loading-state">
+          <span class="material-symbols-outlined animate-pulse">sync</span>
+          <p>Loading data...</p>
         </div>
-      </section>
+      } @else {
+        <!-- Stats Grid -->
+        <section class="stats-grid">
+          @for (stat of stats(); track stat.label) {
+            <a [routerLink]="stat.link" class="stat-card" [style.--accent-color]="stat.color">
+              <div class="stat-icon">
+                <span class="material-symbols-outlined">{{ stat.icon }}</span>
+              </div>
+              <div class="stat-content">
+                <span class="stat-value">{{ stat.value | number }}</span>
+                <span class="stat-label">{{ stat.label }}</span>
+              </div>
+            </a>
+          }
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+          <!-- Distribution Chart -->
+          <section class="chart-section">
+            <h2>Entries by Source Type</h2>
+            <div class="chart-container">
+              @if (store.entriesBySourceType().length === 0) {
+                <p class="empty-state">No entries yet</p>
+              } @else {
+                @for (item of store.entriesBySourceType(); track item.type) {
+                  <div class="distribution-item">
+                    <div class="distribution-bar" [style.width.%]="item.percentage" [style.background]="item.color"></div>
+                    <div class="distribution-info">
+                      <span class="distribution-label">{{ item.type }}</span>
+                      <span class="distribution-value">{{ item.count }} ({{ item.percentage }}%)</span>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          </section>
+
+          <!-- Source Connections -->
+          <section class="sources-section">
+            <h2>Source Connections</h2>
+            <div class="sources-list">
+              @if (store.sourceConnections().length === 0) {
+                <p class="empty-state">No source connections configured</p>
+              } @else {
+                @for (source of store.sourceConnections().slice(0, 5); track source.id) {
+                  <div class="source-item">
+                    <span class="source-type-badge" [style.background]="getSourceColor(source.sourceType?.name)">
+                      {{ source.sourceType?.name || 'Unknown' }}
+                    </span>
+                    <span class="source-name">{{ source.name }}</span>
+                  </div>
+                }
+                @if (store.sourceConnections().length > 5) {
+                  <a routerLink="/sources" class="view-all-link">
+                    View all {{ store.sourceConnections().length }} connections
+                  </a>
+                }
+              }
+            </div>
+          </section>
+        </div>
+
+        <!-- Quick Actions -->
+        <section class="quick-actions">
+          <h2>Quick Actions</h2>
+          <div class="actions-grid">
+            <cds-button kind="primary" routerLink="/explorer">
+              <span class="material-symbols-outlined" slot="icon">add</span>
+              New Entry
+            </cds-button>
+            <cds-button kind="secondary" routerLink="/sources">
+              <span class="material-symbols-outlined" slot="icon">cable</span>
+              New Source
+            </cds-button>
+            <cds-button kind="tertiary" (click)="onImportCSV()">
+              <span class="material-symbols-outlined" slot="icon">upload</span>
+              Import CSV
+            </cds-button>
+            <cds-button kind="ghost" (click)="onExportAll()">
+              <span class="material-symbols-outlined" slot="icon">download</span>
+              Export All
+            </cds-button>
+          </div>
+        </section>
+      }
     </div>
   `,
   styles: [`
@@ -142,6 +140,20 @@ interface ActivityItem {
       .subtitle {
         margin: 0;
         color: var(--dc-text-secondary);
+      }
+    }
+
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--dc-space-2xl);
+      color: var(--dc-text-secondary);
+
+      .material-symbols-outlined {
+        font-size: 48px;
+        margin-bottom: var(--dc-space-md);
       }
     }
 
@@ -204,29 +216,6 @@ interface ActivityItem {
       color: var(--dc-text-secondary);
     }
 
-    .stat-trend {
-      display: flex;
-      align-items: center;
-      gap: var(--dc-space-xs);
-      font-size: 0.875rem;
-
-      &.up {
-        color: var(--dc-success);
-      }
-
-      &.down {
-        color: var(--dc-error);
-      }
-
-      &.stable {
-        color: var(--dc-text-secondary);
-      }
-
-      .trend-icon {
-        font-size: 18px;
-      }
-    }
-
     /* Content Grid */
     .content-grid {
       display: grid;
@@ -240,7 +229,7 @@ interface ActivityItem {
     }
 
     .chart-section,
-    .activity-section {
+    .sources-section {
       background: var(--dc-bg-secondary);
       border: 1px solid var(--dc-border-subtle);
       border-radius: var(--dc-radius-md);
@@ -251,6 +240,13 @@ interface ActivityItem {
         font-size: 1.125rem;
         font-weight: 600;
       }
+    }
+
+    .empty-state {
+      color: var(--dc-text-secondary);
+      font-style: italic;
+      text-align: center;
+      padding: var(--dc-space-lg);
     }
 
     /* Distribution Chart */
@@ -270,6 +266,7 @@ interface ActivityItem {
       height: 8px;
       border-radius: var(--dc-radius-full);
       transition: width var(--dc-duration-slow) var(--dc-easing-standard);
+      min-width: 4px;
     }
 
     .distribution-info {
@@ -286,14 +283,14 @@ interface ActivityItem {
       color: var(--dc-text-secondary);
     }
 
-    /* Activity List */
-    .activity-list {
+    /* Sources List */
+    .sources-list {
       display: flex;
       flex-direction: column;
       gap: var(--dc-space-sm);
     }
 
-    .activity-item {
+    .source-item {
       display: flex;
       align-items: center;
       gap: var(--dc-space-md);
@@ -306,29 +303,30 @@ interface ActivityItem {
       }
     }
 
-    .activity-icon {
-      font-size: 20px;
-
-      &.create { color: var(--dc-success); }
-      &.update { color: var(--dc-info); }
-      &.delete { color: var(--dc-error); }
-      &.import { color: var(--dc-warning); }
-    }
-
-    .activity-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .activity-text {
-      font-size: 0.875rem;
-      color: var(--dc-text-primary);
-    }
-
-    .activity-time {
+    .source-type-badge {
+      padding: 2px 8px;
+      border-radius: var(--dc-radius-sm);
       font-size: 0.75rem;
-      color: var(--dc-text-secondary);
+      font-weight: 500;
+      color: white;
+    }
+
+    .source-name {
+      color: var(--dc-text-primary);
+      font-size: 0.875rem;
+    }
+
+    .view-all-link {
+      display: block;
+      text-align: center;
+      padding: var(--dc-space-sm);
+      color: var(--dc-primary);
+      text-decoration: none;
+      font-size: 0.875rem;
+
+      &:hover {
+        text-decoration: underline;
+      }
     }
 
     /* Quick Actions */
@@ -352,63 +350,68 @@ interface ActivityItem {
     }
   `]
 })
-export class DashboardComponent {
-  // Mock data - will be replaced with real data from stores
-  readonly stats = signal<StatCard[]>([
-    { label: 'Catalog Entries', value: 245, trend: 'up', trendValue: 12, icon: 'folder_open', color: '#0f62fe', link: '/explorer' },
-    { label: 'Source Connections', value: 12, trend: 'up', trendValue: 2, icon: 'cable', color: '#24a148', link: '/sources' },
-    { label: 'Labels', value: 8, trend: 'down', trendValue: -1, icon: 'label', color: '#8a3ffc', link: '/labels' },
-    { label: 'Source Types', value: 6, trend: 'stable', trendValue: 0, icon: 'category', color: '#d02670', link: '/sources' }
+export class DashboardComponent implements OnInit {
+  readonly store = inject(CatalogStore);
+
+  private readonly sourceTypeColors: Record<string, string> = {
+    'DataBridge': 'var(--dc-source-databridge)',
+    'PostgreSQL': 'var(--dc-source-postgresql)',
+    'InfluxDB2': 'var(--dc-source-influxdb)',
+    'MQTT': 'var(--dc-source-mqtt)',
+    'S3': 'var(--dc-source-s3)',
+    'Email': 'var(--dc-source-email)',
+    'Http': 'var(--dc-source-http)',
+    'OPC-UA': 'var(--dc-source-opcua)',
+    'Modbus-TCP': 'var(--dc-source-modbus)',
+    'Leneda': 'var(--dc-source-leneda)'
+  };
+
+  readonly stats = computed<StatCard[]>(() => [
+    {
+      label: 'Catalog Entries',
+      value: this.store.totalEntries(),
+      icon: 'folder_open',
+      color: '#0f62fe',
+      link: '/explorer'
+    },
+    {
+      label: 'Source Connections',
+      value: this.store.totalSources(),
+      icon: 'cable',
+      color: '#24a148',
+      link: '/sources'
+    },
+    {
+      label: 'Labels',
+      value: this.store.totalLabels(),
+      icon: 'label',
+      color: '#8a3ffc',
+      link: '/labels'
+    },
+    {
+      label: 'Source Types',
+      value: this.store.totalSourceTypes(),
+      icon: 'category',
+      color: '#d02670',
+      link: '/sources'
+    }
   ]);
 
-  readonly distribution = signal([
-    { type: 'PostgreSQL', count: 98, percentage: 40, color: 'var(--dc-source-postgresql)' },
-    { type: 'InfluxDB', count: 73, percentage: 30, color: 'var(--dc-source-influxdb)' },
-    { type: 'MQTT', count: 37, percentage: 15, color: 'var(--dc-source-mqtt)' },
-    { type: 'OPC-UA', count: 24, percentage: 10, color: 'var(--dc-source-opcua)' },
-    { type: 'Other', count: 13, percentage: 5, color: 'var(--dc-border-strong)' }
-  ]);
-
-  readonly recentActivity = signal<ActivityItem[]>([
-    { id: '1', type: 'create', entityType: 'entry', entityName: 'temperature_sensor_01', timestamp: new Date(Date.now() - 5 * 60000) },
-    { id: '2', type: 'update', entityType: 'source', entityName: 'MQTT-Production', timestamp: new Date(Date.now() - 15 * 60000) },
-    { id: '3', type: 'import', entityType: 'entry', entityName: '5 entries imported', timestamp: new Date(Date.now() - 30 * 60000) },
-    { id: '4', type: 'create', entityType: 'label', entityName: 'Production', timestamp: new Date(Date.now() - 60 * 60000) },
-    { id: '5', type: 'delete', entityType: 'entry', entityName: 'old_sensor_data', timestamp: new Date(Date.now() - 120 * 60000) }
-  ]);
-
-  onNewEntry(): void {
-    // TODO: Open new entry modal
+  ngOnInit(): void {
+    this.store.loadAll();
   }
 
-  getActivityIcon(type: string): string {
-    const icons: Record<string, string> = {
-      create: 'add_circle',
-      update: 'edit',
-      delete: 'delete',
-      import: 'upload_file'
-    };
-    return icons[type] || 'info';
+  getSourceColor(type: string | undefined): string {
+    return this.sourceTypeColors[type || ''] || 'var(--dc-border-strong)';
   }
 
-  getActivityVerb(type: string): string {
-    const verbs: Record<string, string> = {
-      create: 'was created',
-      update: 'was updated',
-      delete: 'was deleted',
-      import: ''
-    };
-    return verbs[type] || '';
+  onImportCSV(): void {
+    // TODO: Open import modal
+    console.log('Import CSV clicked');
   }
 
-  getRelativeTime(date: Date): string {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-    return `${Math.floor(diffMins / 1440)}d ago`;
+  onExportAll(): void {
+    // TODO: Trigger export
+    console.log('Export all clicked');
   }
 }
