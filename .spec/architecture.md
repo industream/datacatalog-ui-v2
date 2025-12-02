@@ -8,8 +8,11 @@
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │                           Angular Components                             ││
 │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐      ││
-│  │  │Dashboard │ │ Explorer │ │  Sources │ │  Labels  │ │ Settings │      ││
+│  │  │Dashboard │ │ Explorer │ │  Assets  │ │  Sources │ │  Labels  │      ││
 │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘      ││
+│  │                            ┌──────────┐                                 ││
+│  │                            │ Settings │                                 ││
+│  │                            └──────────┘                                 ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │                          Shared Components                               ││
@@ -19,7 +22,7 @@
 │                               STATE LAYER                                    │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │                         Store (Signals + RxJS)                           ││
-│  │  CatalogStore │ SourceStore │ LabelStore │ UIStore │ AuthStore          ││
+│  │  CatalogStore │ SourceStore │ LabelStore │ AssetDictionaryStore │ UIStore││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                              SERVICE LAYER                                   │
@@ -115,6 +118,14 @@
 │   │   │   │   ├── source-modal/
 │   │   │   │   └── source-form/
 │   │   │   └── sources.routes.ts
+│   │   │
+│   │   ├── /assets
+│   │   │   ├── assets.component.ts          # Dictionary list/management
+│   │   │   ├── asset-editor.component.ts    # Tree editor with drag & drop
+│   │   │   ├── asset-dictionary.store.ts    # State management
+│   │   │   └── /components
+│   │   │       ├── asset-tree/
+│   │   │       └── entry-assignment-panel/
 │   │   │
 │   │   ├── /labels
 │   │   │   ├── labels.component.ts
@@ -300,6 +311,18 @@ export const routes: Routes = [
     loadComponent: () => import('./features/explorer/explorer.component')
       .then(m => m.ExplorerComponent),
     title: 'Explorer - DataCatalog'
+  },
+  {
+    path: 'assets',
+    loadComponent: () => import('./features/assets/assets.component')
+      .then(m => m.AssetsComponent),
+    title: 'Asset Dictionaries - DataCatalog'
+  },
+  {
+    path: 'assets/:id',
+    loadComponent: () => import('./features/assets/asset-editor.component')
+      .then(m => m.AssetEditorComponent),
+    title: 'Asset Editor - DataCatalog'
   },
   {
     path: 'sources',

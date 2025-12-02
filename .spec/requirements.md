@@ -98,7 +98,48 @@
 
 ---
 
-### 1.4 Labels
+### 1.4 Asset Dictionaries (NEW)
+
+#### FR-AST-001: Dictionary Management
+- CRUD operations for asset dictionaries
+- Custom name, description, icon, and color for each dictionary
+- Template-based creation (predefined structures)
+- Persist to localStorage (API-ready architecture)
+
+#### FR-AST-002: Hierarchical Node Structure
+- Unlimited depth tree structure for organizing assets
+- Each node has: name, description, icon, order
+- Support for nested child nodes
+- Flat storage with parent references (efficient for operations)
+
+#### FR-AST-003: Tree Editor Interface
+- Visual tree representation with expand/collapse
+- Drag-and-drop reordering and reparenting
+- Inline node creation and editing
+- Delete nodes with cascade (children removed)
+- Context menu for node actions
+
+#### FR-AST-004: Drag & Drop Operations
+- Drag nodes to new positions within same parent (reorder)
+- Drag nodes to different parent (reparenting)
+- Visual drop indicators (before, after, inside)
+- Circular reference prevention
+- Undo/redo support (future)
+
+#### FR-AST-005: Entry Assignment
+- Assign Catalog Entries to tree nodes (tagging)
+- Bulk assign/unassign entries
+- Visual count of assigned entries per node
+- Filter Explorer by asset node
+
+#### FR-AST-006: Dictionary Templates
+- Predefined templates: Data Classification, Data Domain, Business Glossary
+- Custom template creation (future)
+- Apply template to new dictionary
+
+---
+
+### 1.5 Labels
 
 #### FR-LBL-001: Label Management
 - CRUD operations for labels
@@ -115,7 +156,7 @@
 
 ---
 
-### 1.5 Graph View (NEW)
+### 1.6 Graph View (NEW)
 
 #### FR-GRF-001: Relationship Visualization
 - Nodes: Source Connections, Catalog Entries, Labels
@@ -135,7 +176,7 @@
 
 ---
 
-### 1.6 Settings (NEW)
+### 1.7 Settings (NEW)
 
 #### FR-SET-001: Appearance Settings
 - Theme: Light / Dark / System
@@ -153,7 +194,7 @@
 
 ---
 
-### 1.7 Import/Export
+### 1.8 Import/Export
 
 #### FR-IMP-001: CSV Import
 - Drag-and-drop file upload
@@ -245,6 +286,14 @@
 - US-001: As a user, I want to see an overview of my data catalog so I can quickly understand its current state.
 - US-002: As a user, I want to see recent activity so I can track changes made by my team.
 - US-003: As a user, I want quick action buttons so I can perform common tasks faster.
+
+### Epic: Asset Dictionaries
+- US-040: As a user, I want to create asset dictionaries so I can organize my catalog entries hierarchically.
+- US-041: As a user, I want to use templates when creating dictionaries so I can start with a predefined structure.
+- US-042: As a user, I want to add, edit, and delete nodes in the tree so I can customize the hierarchy.
+- US-043: As a user, I want to drag and drop nodes so I can reorganize the structure easily.
+- US-044: As a user, I want to assign catalog entries to nodes so I can categorize my data assets.
+- US-045: As a user, I want to see a visual count of entries per node so I can understand the distribution.
 
 ### Epic: Explorer
 - US-010: As a user, I want to switch between view modes so I can see data in my preferred format.

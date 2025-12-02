@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import '@carbon/web-components/es/components/button/index.js';
 
-import { AssetNode, CatalogEntry } from '../../core/models';
+import { AssetNode, CatalogEntry, Label } from '../../core/models';
 import { AssetDictionaryStore } from './asset-dictionary.store';
 import { CatalogStore } from '../../store';
 
@@ -127,12 +127,37 @@ import { CatalogStore } from '../../store';
         <div class="tags-panel">
           <div class="panel-header">
             <h2>Catalog Entries</h2>
-            <input
-              type="text"
-              class="search-input"
-              placeholder="Search entries..."
-              [value]="searchQuery()"
-              (input)="onSearchInput($event)">
+            <div class="filter-controls">
+              <input
+                type="text"
+                class="search-input"
+                placeholder="Search entries..."
+                [value]="searchQuery()"
+                (input)="onSearchInput($event)">
+            </div>
+          </div>
+
+          <!-- Label Filter -->
+          <div class="label-filter-bar">
+            <span class="filter-label">Filter by label:</span>
+            <div class="label-chips">
+              <button
+                class="label-chip"
+                [class.active]="selectedLabelFilter() === null"
+                (click)="setLabelFilter(null)">
+                All
+              </button>
+              @for (label of availableLabels(); track label.id) {
+                <button
+                  class="label-chip"
+                  [class.active]="selectedLabelFilter() === label.id"
+                  [style.--label-color]="getLabelColor(label)"
+                  (click)="setLabelFilter(label.id)">
+                  <span class="label-dot"></span>
+                  {{ label.name }}
+                </button>
+              }
+            </div>
           </div>
 
           <div class="tags-container">
@@ -141,19 +166,40 @@ import { CatalogStore } from '../../store';
                 <h3>
                   <span class="material-symbols-outlined">check_circle</span>
                   Assigned to "{{ getSelectedNode()?.name }}"
+                  <span class="count-badge">{{ assignedEntries().length }}</span>
                 </h3>
                 <div class="entries-list assigned"
                      (dragover)="onDragOver($event)"
                      (drop)="onDropEntry($event)">
                   @if (assignedEntries().length === 0) {
-                    <p class="empty-hint">Drag entries here to assign them</p>
+                    <p class="empty-hint">Drag entries here or double-click to assign</p>
                   } @else {
                     @for (entry of assignedEntries(); track entry.id) {
                       <div class="entry-item assigned"
                            draggable="true"
                            (dragstart)="onEntryDragStart($event, entry, true)">
-                        <span class="entry-name">{{ entry.name }}</span>
-                        <span class="entry-type">{{ entry.dataType }}</span>
+                        <div class="entry-main">
+                          <span class="entry-name">{{ entry.name }}</span>
+                          <div class="entry-meta">
+                            <span class="entry-source" [title]="entry.sourceConnection.name">
+                              <span class="material-symbols-outlined">database</span>
+                              {{ entry.sourceConnection.name }}
+                            </span>
+                            <span class="entry-type">{{ entry.dataType }}</span>
+                          </div>
+                        </div>
+                        @if (entry.labels && entry.labels.length > 0) {
+                          <div class="entry-labels">
+                            @for (label of entry.labels.slice(0, 3); track label.id) {
+                              <span class="entry-label" [style.background]="getLabelColor(label)">
+                                {{ label.name }}
+                              </span>
+                            }
+                            @if (entry.labels.length > 3) {
+                              <span class="more-labels">+{{ entry.labels.length - 3 }}</span>
+                            }
+                          </div>
+                        }
                         <button class="icon-btn small danger" title="Remove" (click)="unassignEntry(entry)">
                           <span class="material-symbols-outlined">close</span>
                         </button>
@@ -168,16 +214,67 @@ import { CatalogStore } from '../../store';
               <h3>
                 <span class="material-symbols-outlined">inventory_2</span>
                 Available Entries
+                <span class="count-badge">{{ filteredAvailableEntries().length }}</span>
               </h3>
+
+              <!-- Selection bar -->
+              @if (selectedEntryIds().size > 0) {
+                <div class="selection-bar">
+                  <div class="selection-info">
+                    <span class="material-symbols-outlined">check_circle</span>
+                    {{ selectedEntryIds().size }} selected
+                  </div>
+                  <div class="selection-actions">
+                    @if (selectedNodeId()) {
+                      <button class="selection-btn" (click)="assignSelectedEntries()">
+                        <span class="material-symbols-outlined">add</span>
+                        Assign to node
+                      </button>
+                    }
+                    <button class="selection-btn danger" (click)="clearSelection()">
+                      <span class="material-symbols-outlined">close</span>
+                      Clear
+                    </button>
+                  </div>
+                </div>
+              }
+
               <div class="entries-list">
                 @for (entry of filteredAvailableEntries(); track entry.id) {
                   <div class="entry-item"
                        [class.in-other-node]="isInOtherNode(entry)"
+                       [class.selected]="isEntrySelected(entry.id)"
                        draggable="true"
                        (dragstart)="onEntryDragStart($event, entry, false)"
-                       (dblclick)="assignEntry(entry)">
-                    <span class="entry-name">{{ entry.name }}</span>
-                    <span class="entry-type">{{ entry.dataType }}</span>
+                       (dblclick)="assignEntry(entry)"
+                       (click)="onEntryClick($event, entry)">
+                    <input type="checkbox"
+                           class="entry-checkbox"
+                           [checked]="isEntrySelected(entry.id)"
+                           (click)="$event.stopPropagation()"
+                           (change)="toggleEntrySelection(entry.id)">
+                    <div class="entry-main">
+                      <span class="entry-name">{{ entry.name }}</span>
+                      <div class="entry-meta">
+                        <span class="entry-source" [title]="entry.sourceConnection.name">
+                          <span class="material-symbols-outlined">database</span>
+                          {{ entry.sourceConnection.name }}
+                        </span>
+                        <span class="entry-type">{{ entry.dataType }}</span>
+                      </div>
+                    </div>
+                    @if (entry.labels && entry.labels.length > 0) {
+                      <div class="entry-labels">
+                        @for (label of entry.labels.slice(0, 3); track label.id) {
+                          <span class="entry-label" [style.background]="getLabelColor(label)">
+                            {{ label.name }}
+                          </span>
+                        }
+                        @if (entry.labels.length > 3) {
+                          <span class="more-labels">+{{ entry.labels.length - 3 }}</span>
+                        }
+                      </div>
+                    }
                     @if (isInOtherNode(entry)) {
                       <span class="in-node-badge" [title]="'Already in: ' + getNodesForEntry(entry)">
                         <span class="material-symbols-outlined">link</span>
@@ -185,7 +282,7 @@ import { CatalogStore } from '../../store';
                     }
                   </div>
                 } @empty {
-                  <p class="empty-hint">No entries match your search</p>
+                  <p class="empty-hint">No entries match your filters</p>
                 }
               </div>
             </div>
@@ -547,6 +644,132 @@ import { CatalogStore } from '../../store';
       /* Children are indented via --level in .tree-node */
     }
 
+    /* Label filter bar */
+    .label-filter-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--dc-space-sm);
+      padding: var(--dc-space-sm) var(--dc-space-lg);
+      background: var(--dc-bg-secondary);
+      border-bottom: 1px solid var(--dc-border-subtle);
+      flex-shrink: 0;
+      overflow-x: auto;
+
+      .filter-label {
+        font-size: var(--dc-text-size-sm);
+        color: var(--dc-text-secondary);
+        white-space: nowrap;
+      }
+
+      .label-chips {
+        display: flex;
+        gap: var(--dc-space-xs);
+        flex-wrap: nowrap;
+      }
+
+      .label-chip {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border: 1px solid var(--dc-border-subtle);
+        background: var(--dc-bg-tertiary);
+        color: var(--dc-text-secondary);
+        border-radius: var(--dc-radius-full);
+        font-size: 12px;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: all var(--dc-duration-fast);
+
+        &:hover {
+          border-color: var(--dc-primary);
+          color: var(--dc-text-primary);
+        }
+
+        &.active {
+          background: var(--dc-primary);
+          border-color: var(--dc-primary);
+          color: white;
+
+          .label-dot {
+            background: white;
+          }
+        }
+
+        .label-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: var(--label-color, var(--dc-text-secondary));
+        }
+      }
+    }
+
+    /* Selection bar */
+    .selection-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--dc-space-sm) var(--dc-space-md);
+      background: var(--dc-primary);
+      color: white;
+      border-radius: var(--dc-radius-sm);
+      margin-bottom: var(--dc-space-sm);
+      animation: slideDown 0.2s ease;
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-8px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .selection-info {
+        display: flex;
+        align-items: center;
+        gap: var(--dc-space-sm);
+        font-size: var(--dc-text-size-sm);
+        font-weight: 500;
+      }
+
+      .selection-actions {
+        display: flex;
+        gap: var(--dc-space-xs);
+      }
+
+      .selection-btn {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border: none;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border-radius: var(--dc-radius-sm);
+        font-size: 12px;
+        cursor: pointer;
+        transition: background var(--dc-duration-fast);
+
+        &:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+
+        &.danger {
+          &:hover {
+            background: var(--dc-error);
+          }
+        }
+
+        .material-symbols-outlined {
+          font-size: 16px;
+        }
+      }
+    }
+
     .tags-container {
       flex: 1;
       overflow-y: auto;
@@ -571,11 +794,21 @@ import { CatalogStore } from '../../store';
         .material-symbols-outlined {
           font-size: 16px;
         }
+
+        .count-badge {
+          background: var(--dc-bg-tertiary);
+          padding: 1px 6px;
+          border-radius: var(--dc-radius-full);
+          font-size: 11px;
+          font-weight: 600;
+        }
       }
     }
 
     .entries-list {
       min-height: 60px;
+      max-height: 400px;
+      overflow-y: auto;
       background: var(--dc-bg-secondary);
       border: 1px solid var(--dc-border-subtle);
       border-radius: var(--dc-radius-sm);
@@ -598,14 +831,15 @@ import { CatalogStore } from '../../store';
 
     .entry-item {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: var(--dc-space-sm);
-      padding: var(--dc-space-xs) var(--dc-space-sm);
+      padding: var(--dc-space-sm);
       background: var(--dc-bg-tertiary);
       border-radius: var(--dc-radius-sm);
       margin-bottom: 4px;
       cursor: grab;
       transition: all var(--dc-duration-fast);
+      position: relative;
 
       &:last-child {
         margin-bottom: 0;
@@ -613,6 +847,10 @@ import { CatalogStore } from '../../store';
 
       &:hover {
         background: var(--dc-bg-primary);
+
+        .entry-checkbox {
+          opacity: 1;
+        }
       }
 
       &.assigned {
@@ -624,12 +862,63 @@ import { CatalogStore } from '../../store';
         opacity: 0.7;
       }
 
-      .entry-name {
+      &.selected {
+        background: color-mix(in srgb, var(--dc-primary) 15%, var(--dc-bg-tertiary));
+        outline: 2px solid var(--dc-primary);
+        outline-offset: -2px;
+
+        .entry-checkbox {
+          opacity: 1;
+        }
+      }
+
+      .entry-checkbox {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        margin-top: 2px;
+        opacity: 0;
+        cursor: pointer;
+        accent-color: var(--dc-primary);
+        transition: opacity var(--dc-duration-fast);
+      }
+
+      .entry-main {
         flex: 1;
+        min-width: 0;
+      }
+
+      .entry-name {
         font-size: var(--dc-text-size-sm);
+        font-weight: 500;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        display: block;
+      }
+
+      .entry-meta {
+        display: flex;
+        align-items: center;
+        gap: var(--dc-space-sm);
+        margin-top: 2px;
+      }
+
+      .entry-source {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 11px;
+        color: var(--dc-text-secondary);
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        .material-symbols-outlined {
+          font-size: 12px;
+          flex-shrink: 0;
+        }
       }
 
       .entry-type {
@@ -639,10 +928,39 @@ import { CatalogStore } from '../../store';
         padding: 1px 6px;
         border-radius: var(--dc-radius-sm);
         font-family: monospace;
+        flex-shrink: 0;
+      }
+
+      .entry-labels {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 6px;
+      }
+
+      .entry-label {
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: var(--dc-radius-full);
+        color: white;
+        font-weight: 500;
+        max-width: 80px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .more-labels {
+        font-size: 10px;
+        padding: 1px 6px;
+        background: var(--dc-bg-secondary);
+        border-radius: var(--dc-radius-full);
+        color: var(--dc-text-secondary);
       }
 
       .in-node-badge {
         color: var(--dc-text-placeholder);
+        flex-shrink: 0;
 
         .material-symbols-outlined {
           font-size: 14px;
@@ -825,12 +1143,25 @@ export class AssetEditorComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
+  // Label colors (generated based on name hash)
+  private readonly labelColors = [
+    '#0f62fe', '#6929c4', '#1192e8', '#005d5d', '#9f1853',
+    '#fa4d56', '#198038', '#ee5396', '#b28600', '#8a3ffc'
+  ];
+
   readonly searchQuery = signal('');
   readonly selectedNodeId = signal<string | null>(null);
   readonly dragOverNodeId = signal<string | null>(null);
   readonly showNodeModal = signal(false);
   readonly editingNode = signal<AssetNode | null>(null);
   readonly parentNodeIdForNew = signal<string | null>(null);
+
+  // Label filter
+  readonly selectedLabelFilter = signal<string | null>(null);
+
+  // Multi-selection
+  readonly selectedEntryIds = signal<Set<string>>(new Set());
+  private lastClickedEntryId: string | null = null;
 
   // Node form
   readonly nodeName = signal('');
@@ -860,6 +1191,22 @@ export class AssetEditorComponent implements OnInit {
     return this.applyExpandState(nodes);
   });
 
+  // Get all unique labels from entries
+  readonly availableLabels = computed(() => {
+    const entries = this.catalogStore.entries();
+    const labelMap = new Map<string, Label>();
+
+    entries.forEach(entry => {
+      entry.labels?.forEach(label => {
+        if (!labelMap.has(label.id)) {
+          labelMap.set(label.id, label);
+        }
+      });
+    });
+
+    return Array.from(labelMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+  });
+
   readonly assignedEntries = computed(() => {
     const nodeId = this.selectedNodeId();
     if (!nodeId) return [];
@@ -873,6 +1220,7 @@ export class AssetEditorComponent implements OnInit {
 
   readonly filteredAvailableEntries = computed(() => {
     const query = this.searchQuery().toLowerCase();
+    const labelFilter = this.selectedLabelFilter();
     const nodeId = this.selectedNodeId();
     const node = nodeId ? this.flatNodes().find(n => n.id === nodeId) : null;
     const assignedIds = new Set(node?.entryIds || []);
@@ -882,11 +1230,19 @@ export class AssetEditorComponent implements OnInit {
     // Filter out assigned ones
     entries = entries.filter(e => !assignedIds.has(e.id));
 
-    // Apply search
+    // Apply label filter
+    if (labelFilter) {
+      entries = entries.filter(e =>
+        e.labels?.some(l => l.id === labelFilter)
+      );
+    }
+
+    // Apply search (include source connection name in search)
     if (query) {
       entries = entries.filter(e =>
         e.name.toLowerCase().includes(query) ||
-        e.dataType.toLowerCase().includes(query)
+        e.dataType.toLowerCase().includes(query) ||
+        e.sourceConnection.name.toLowerCase().includes(query)
       );
     }
 
@@ -1058,8 +1414,17 @@ export class AssetEditorComponent implements OnInit {
       this.store.moveNode(dict.id, this.draggedNode.id, targetNode.id, 0);
       this.draggedNode = null;
     } else if (this.draggedEntry) {
-      // Dropping an entry on a node - assign it
-      this.store.addEntryToNode(dict.id, targetNode.id, this.draggedEntry.id);
+      // Dropping entry/entries on a node - assign them
+      const selectedIds = this.selectedEntryIds();
+      const idsToAssign = selectedIds.has(this.draggedEntry.id) && selectedIds.size > 1
+        ? Array.from(selectedIds)
+        : [this.draggedEntry.id];
+
+      idsToAssign.forEach(entryId => {
+        this.store.addEntryToNode(dict.id, targetNode.id, entryId);
+      });
+
+      this.clearSelection();
       this.draggedEntry = null;
     }
   }
@@ -1079,7 +1444,20 @@ export class AssetEditorComponent implements OnInit {
   onEntryDragStart(event: DragEvent, entry: CatalogEntry, fromAssigned: boolean): void {
     this.draggedEntry = entry;
     this.draggedFromAssigned = fromAssigned;
-    event.dataTransfer?.setData('text/plain', entry.id);
+
+    // If the dragged entry is selected, we'll drag all selected entries
+    // Otherwise, just drag this one
+    const selectedIds = this.selectedEntryIds();
+    const idsToTransfer = selectedIds.has(entry.id) && selectedIds.size > 1
+      ? Array.from(selectedIds)
+      : [entry.id];
+
+    event.dataTransfer?.setData('text/plain', JSON.stringify(idsToTransfer));
+
+    // Set drag image count if multiple
+    if (idsToTransfer.length > 1 && event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
   }
 
   onDragOver(event: DragEvent): void {
@@ -1091,10 +1469,21 @@ export class AssetEditorComponent implements OnInit {
 
     const dict = this.dictionary();
     const nodeId = this.selectedNodeId();
-    if (!dict || !nodeId || !this.draggedEntry) return;
+    if (!dict || !nodeId) return;
 
-    if (!this.draggedFromAssigned) {
-      this.store.addEntryToNode(dict.id, nodeId, this.draggedEntry.id);
+    // Get dropped entry IDs
+    const selectedIds = this.selectedEntryIds();
+    const idsToAssign = this.draggedEntry
+      ? (selectedIds.has(this.draggedEntry.id) && selectedIds.size > 1
+        ? Array.from(selectedIds)
+        : [this.draggedEntry.id])
+      : [];
+
+    if (!this.draggedFromAssigned && idsToAssign.length > 0) {
+      idsToAssign.forEach(entryId => {
+        this.store.addEntryToNode(dict.id, nodeId, entryId);
+      });
+      this.clearSelection();
     }
 
     this.draggedEntry = null;
@@ -1126,5 +1515,96 @@ export class AssetEditorComponent implements OnInit {
       .filter(n => n.entryIds.includes(entry.id))
       .map(n => n.name)
       .join(', ');
+  }
+
+  // Label filter methods
+  setLabelFilter(labelId: string | null): void {
+    this.selectedLabelFilter.set(labelId);
+  }
+
+  getLabelColor(label: Label): string {
+    // Generate a consistent color based on the label name
+    let hash = 0;
+    for (let i = 0; i < label.name.length; i++) {
+      hash = label.name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return this.labelColors[Math.abs(hash) % this.labelColors.length];
+  }
+
+  // Multi-selection methods
+  isEntrySelected(entryId: string): boolean {
+    return this.selectedEntryIds().has(entryId);
+  }
+
+  toggleEntrySelection(entryId: string): void {
+    const current = this.selectedEntryIds();
+    const newSet = new Set(current);
+
+    if (newSet.has(entryId)) {
+      newSet.delete(entryId);
+    } else {
+      newSet.add(entryId);
+    }
+
+    this.selectedEntryIds.set(newSet);
+    this.lastClickedEntryId = entryId;
+  }
+
+  onEntryClick(event: MouseEvent, entry: CatalogEntry): void {
+    // If clicking on checkbox, let the checkbox handler deal with it
+    if ((event.target as HTMLElement).classList.contains('entry-checkbox')) {
+      return;
+    }
+
+    // Shift+click for range selection
+    if (event.shiftKey && this.lastClickedEntryId) {
+      const entries = this.filteredAvailableEntries();
+      const lastIndex = entries.findIndex(e => e.id === this.lastClickedEntryId);
+      const currentIndex = entries.findIndex(e => e.id === entry.id);
+
+      if (lastIndex !== -1 && currentIndex !== -1) {
+        const start = Math.min(lastIndex, currentIndex);
+        const end = Math.max(lastIndex, currentIndex);
+        const newSet = new Set(this.selectedEntryIds());
+
+        for (let i = start; i <= end; i++) {
+          newSet.add(entries[i].id);
+        }
+
+        this.selectedEntryIds.set(newSet);
+        return;
+      }
+    }
+
+    // Ctrl/Cmd+click for toggle individual selection
+    if (event.ctrlKey || event.metaKey) {
+      this.toggleEntrySelection(entry.id);
+      return;
+    }
+
+    // Regular click - if already selected, do nothing (allow drag)
+    // If not selected, select only this one
+    if (!this.isEntrySelected(entry.id)) {
+      this.selectedEntryIds.set(new Set([entry.id]));
+      this.lastClickedEntryId = entry.id;
+    }
+  }
+
+  clearSelection(): void {
+    this.selectedEntryIds.set(new Set());
+    this.lastClickedEntryId = null;
+  }
+
+  assignSelectedEntries(): void {
+    const dict = this.dictionary();
+    const nodeId = this.selectedNodeId();
+    if (!dict || !nodeId) return;
+
+    const selectedIds = this.selectedEntryIds();
+    selectedIds.forEach(entryId => {
+      this.store.addEntryToNode(dict.id, nodeId, entryId);
+    });
+
+    this.clearSelection();
   }
 }
