@@ -62,11 +62,11 @@ import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
               <label>Default View</label>
               <p>Choose the default view mode for Explorer</p>
             </div>
-            <cds-dropdown value="grid">
-              <cds-dropdown-item value="list">List</cds-dropdown-item>
-              <cds-dropdown-item value="grid">Grid</cds-dropdown-item>
-              <cds-dropdown-item value="table">Table</cds-dropdown-item>
-            </cds-dropdown>
+            <select class="form-select" [value]="defaultView()" (change)="setDefaultView($event)">
+              <option value="table">Table</option>
+              <option value="grid">Grid</option>
+              <option value="list">List</option>
+            </select>
           </div>
 
           <div class="setting-item">
@@ -74,11 +74,11 @@ import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
               <label>Items per Page</label>
               <p>Number of items to display per page</p>
             </div>
-            <cds-dropdown value="50">
-              <cds-dropdown-item value="25">25</cds-dropdown-item>
-              <cds-dropdown-item value="50">50</cds-dropdown-item>
-              <cds-dropdown-item value="100">100</cds-dropdown-item>
-            </cds-dropdown>
+            <select class="form-select" [value]="itemsPerPage()" (change)="setItemsPerPage($event)">
+              <option value="25">25</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
           </div>
         </section>
 
@@ -89,12 +89,31 @@ import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
             API Configuration
           </h2>
 
-          <div class="setting-item">
+          <div class="setting-item api-endpoint-item">
             <div class="setting-info">
               <label>API Endpoint</label>
-              <p>Current DataCatalog API URL</p>
+              <p>DataCatalog API URL</p>
             </div>
-            <code class="api-url">{{ apiUrl() }}</code>
+            <div class="api-input-group">
+              <input
+                type="text"
+                class="form-input api-input"
+                [value]="apiUrl()"
+                (input)="onApiUrlChange($event)"
+                placeholder="http://localhost:8002">
+              <button
+                class="test-btn"
+                [class.testing]="isTesting()"
+                [disabled]="isTesting()"
+                (click)="testConnection()">
+                @if (isTesting()) {
+                  <span class="material-symbols-outlined animate-spin">sync</span>
+                } @else {
+                  <span class="material-symbols-outlined">play_arrow</span>
+                }
+                {{ isTesting() ? 'Testing...' : 'Test' }}
+              </button>
+            </div>
           </div>
 
           <div class="setting-item">
@@ -104,7 +123,7 @@ import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
             </div>
             <div class="status-indicator" [class]="apiStatus()">
               <span class="status-dot"></span>
-              {{ apiStatus() === 'connected' ? 'Connected' : 'Disconnected' }}
+              {{ apiStatus() === 'connected' ? 'Connected' : apiStatus() === 'disconnected' ? 'Disconnected' : 'Not tested' }}
             </div>
           </div>
         </section>
@@ -235,12 +254,103 @@ import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
       }
     }
 
+    /* Form select styling */
+    .form-select {
+      padding: var(--dc-space-sm) var(--dc-space-md);
+      padding-right: 2rem;
+      background: var(--dc-bg-tertiary);
+      border: 1px solid var(--dc-border-subtle);
+      border-radius: var(--dc-radius-sm);
+      color: var(--dc-text-primary);
+      font-size: 0.875rem;
+      cursor: pointer;
+      min-width: 120px;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16' fill='%23c6c6c6'%3E%3Cpath d='M8 11L3 6l.7-.7L8 9.6l4.3-4.3.7.7z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+
+      &:focus {
+        outline: none;
+        border-color: var(--dc-primary);
+      }
+
+      &:hover {
+        border-color: var(--dc-border-strong);
+      }
+
+      option {
+        background: var(--dc-bg-secondary);
+        color: var(--dc-text-primary);
+      }
+    }
+
     .api-url {
       padding: var(--dc-space-sm) var(--dc-space-md);
       background: var(--dc-bg-tertiary);
       border-radius: var(--dc-radius-sm);
       font-family: monospace;
       font-size: 0.875rem;
+    }
+
+    .api-endpoint-item {
+      flex-wrap: wrap;
+      gap: var(--dc-space-md);
+    }
+
+    .api-input-group {
+      display: flex;
+      gap: var(--dc-space-sm);
+      align-items: center;
+    }
+
+    .api-input {
+      width: 280px;
+      padding: var(--dc-space-sm) var(--dc-space-md);
+      background: var(--dc-bg-tertiary);
+      border: 1px solid var(--dc-border-subtle);
+      border-radius: var(--dc-radius-sm);
+      color: var(--dc-text-primary);
+      font-family: monospace;
+      font-size: 0.875rem;
+
+      &:focus {
+        outline: none;
+        border-color: var(--dc-primary);
+      }
+    }
+
+    .test-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--dc-space-xs);
+      padding: var(--dc-space-sm) var(--dc-space-md);
+      background: var(--dc-primary);
+      border: none;
+      border-radius: var(--dc-radius-sm);
+      color: white;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all var(--dc-duration-fast);
+      white-space: nowrap;
+
+      .material-symbols-outlined {
+        font-size: 18px;
+      }
+
+      &:hover:not(:disabled) {
+        background: var(--dc-primary-hover);
+      }
+
+      &:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+
+      &.testing {
+        background: var(--dc-bg-tertiary);
+        color: var(--dc-text-secondary);
+      }
     }
 
     .status-indicator {
@@ -263,6 +373,11 @@ import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
       &.disconnected {
         color: var(--dc-error);
         .status-dot { background: var(--dc-error); }
+      }
+
+      &.unknown {
+        color: var(--dc-text-secondary);
+        .status-dot { background: var(--dc-text-secondary); }
       }
     }
 
@@ -309,12 +424,17 @@ export class SettingsComponent {
   ];
 
   readonly isDarkTheme = signal(true);
-  readonly density = signal('default');
+  readonly density = signal('compact');
+  readonly defaultView = signal('table');
+  readonly itemsPerPage = signal('50');
   readonly apiUrl = signal('http://localhost:8002');
-  readonly apiStatus = signal<'connected' | 'disconnected'>('connected');
+  readonly apiStatus = signal<'connected' | 'disconnected' | 'unknown'>('unknown');
+  readonly isTesting = signal(false);
 
   constructor() {
     this.loadPreferences();
+    // Test connection on load
+    this.testConnection();
   }
 
   toggleTheme(): void {
@@ -329,12 +449,74 @@ export class SettingsComponent {
     this.savePreferences();
   }
 
+  setDefaultView(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.defaultView.set(select.value);
+    this.savePreferences();
+  }
+
+  setItemsPerPage(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.itemsPerPage.set(select.value);
+    this.savePreferences();
+  }
+
+  onApiUrlChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.apiUrl.set(input.value);
+    this.apiStatus.set('unknown');
+    localStorage.setItem('dc-api-url', input.value);
+  }
+
+  async testConnection(): Promise<void> {
+    const url = this.apiUrl();
+    if (!url) {
+      this.apiStatus.set('disconnected');
+      return;
+    }
+
+    this.isTesting.set(true);
+
+    try {
+      // Try to reach the API health endpoint
+      const response = await fetch(`${url}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      });
+
+      if (response.ok) {
+        this.apiStatus.set('connected');
+      } else {
+        this.apiStatus.set('disconnected');
+      }
+    } catch {
+      // If health endpoint fails, try the base URL
+      try {
+        const response = await fetch(url, {
+          method: 'HEAD',
+          signal: AbortSignal.timeout(5000)
+        });
+        this.apiStatus.set(response.ok ? 'connected' : 'disconnected');
+      } catch {
+        this.apiStatus.set('disconnected');
+      }
+    } finally {
+      this.isTesting.set(false);
+    }
+  }
+
   private loadPreferences(): void {
     const theme = localStorage.getItem('dc-theme');
     const density = localStorage.getItem('dc-density');
+    const defaultView = localStorage.getItem('dc-default-view');
+    const itemsPerPage = localStorage.getItem('dc-items-per-page');
+    const apiUrl = localStorage.getItem('dc-api-url');
 
     if (theme) this.isDarkTheme.set(theme === 'dark');
     if (density) this.density.set(density);
+    if (defaultView) this.defaultView.set(defaultView);
+    if (itemsPerPage) this.itemsPerPage.set(itemsPerPage);
+    if (apiUrl) this.apiUrl.set(apiUrl);
 
     this.applyTheme();
     this.applyDensity();
@@ -343,6 +525,8 @@ export class SettingsComponent {
   private savePreferences(): void {
     localStorage.setItem('dc-theme', this.isDarkTheme() ? 'dark' : 'light');
     localStorage.setItem('dc-density', this.density());
+    localStorage.setItem('dc-default-view', this.defaultView());
+    localStorage.setItem('dc-items-per-page', this.itemsPerPage());
   }
 
   private applyTheme(): void {

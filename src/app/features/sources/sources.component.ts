@@ -111,6 +111,12 @@ import { SourceConnection, SourceType } from '../../core/models';
                     <span class="detail-value">{{ connection['topic'] }}</span>
                   </div>
                 }
+                @if (connection['url']) {
+                  <div class="detail-row">
+                    <span class="detail-label">URL:</span>
+                    <span class="detail-value">{{ connection['url'] }}</span>
+                  </div>
+                }
               </div>
               <div class="card-footer">
                 <span class="entry-count">
@@ -147,12 +153,11 @@ import { SourceConnection, SourceType } from '../../core/models';
                 <select
                   id="conn-type"
                   class="form-select"
-                  [value]="formData()['sourceTypeId']"
                   (change)="updateFormField('sourceTypeId', $event)"
                   [disabled]="!!editingConnection()">
                   <option value="">Select a type...</option>
                   @for (type of store.sourceTypes(); track type.id) {
-                    <option [value]="type.id">{{ type.name }}</option>
+                    <option [value]="type.id" [selected]="type.id === formData()['sourceTypeId']">{{ type.name }}</option>
                   }
                 </select>
               </div>
@@ -160,6 +165,12 @@ import { SourceConnection, SourceType } from '../../core/models';
               <!-- Dynamic fields based on source type -->
               @if (selectedSourceType()) {
                 @switch (selectedSourceType()?.name) {
+                  @case ('DataBridge') {
+                    <div class="form-group">
+                      <label for="url">URL</label>
+                      <input type="text" id="url" class="form-input" [value]="formData()['url'] || ''" (input)="updateFormField('url', $event)" placeholder="https://...">
+                    </div>
+                  }
                   @case ('PostgreSQL') {
                     <div class="form-group">
                       <label for="host">Host</label>
@@ -182,7 +193,13 @@ import { SourceConnection, SourceType } from '../../core/models';
                       </div>
                       <div class="form-group">
                         <label for="password">Password</label>
-                        <input type="password" id="password" class="form-input" [value]="formData()['password'] || ''" (input)="updateFormField('password', $event)">
+                        <input type="password" id="password" class="form-input"
+                          [value]="formData()['password'] || ''"
+                          [placeholder]="editingConnection() ? '(unchanged)' : ''"
+                          (input)="updateFormField('password', $event)">
+                        @if (editingConnection()) {
+                          <span class="field-hint">Leave empty to keep current password</span>
+                        }
                       </div>
                     </div>
                   }
@@ -203,7 +220,13 @@ import { SourceConnection, SourceType } from '../../core/models';
                     </div>
                     <div class="form-group">
                       <label for="token">Token</label>
-                      <input type="password" id="token" class="form-input" [value]="formData()['token'] || ''" (input)="updateFormField('token', $event)">
+                      <input type="password" id="token" class="form-input"
+                        [value]="formData()['token'] || ''"
+                        [placeholder]="editingConnection() ? '(unchanged)' : ''"
+                        (input)="updateFormField('token', $event)">
+                      @if (editingConnection()) {
+                        <span class="field-hint">Leave empty to keep current token</span>
+                      }
                     </div>
                   }
                   @case ('MQTT') {
@@ -241,7 +264,7 @@ import { SourceConnection, SourceType } from '../../core/models';
   `,
   styles: [`
     .sources-container {
-      padding: var(--dc-space-xl);
+      padding: calc(var(--dc-card-padding) * 2);
       max-width: 1400px;
       margin: 0 auto;
     }
@@ -250,18 +273,18 @@ import { SourceConnection, SourceType } from '../../core/models';
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      margin-bottom: var(--dc-space-xl);
+      margin-bottom: var(--dc-header-gap);
 
       .header-content {
         h1 {
           margin: 0 0 var(--dc-space-xs);
-          font-size: 2rem;
           font-weight: 600;
         }
 
         .subtitle {
           margin: 0;
           color: var(--dc-text-secondary);
+          font-size: var(--dc-text-size-base);
         }
       }
     }
@@ -296,7 +319,7 @@ import { SourceConnection, SourceType } from '../../core/models';
     }
 
     .filter-bar {
-      margin-bottom: var(--dc-space-lg);
+      margin-bottom: var(--dc-header-gap);
     }
 
     .type-filters {
@@ -306,12 +329,12 @@ import { SourceConnection, SourceType } from '../../core/models';
     }
 
     .type-filter-btn {
-      padding: 8px 16px;
+      padding: var(--dc-button-padding);
       border: 1px solid var(--dc-border-subtle);
       border-radius: var(--dc-radius-full);
       background: var(--dc-bg-secondary);
       color: var(--dc-text-secondary);
-      font-size: 0.875rem;
+      font-size: var(--dc-text-size-base);
       cursor: pointer;
       transition: all var(--dc-duration-fast);
 
@@ -330,14 +353,14 @@ import { SourceConnection, SourceType } from '../../core/models';
     .connections-grid {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: var(--dc-space-lg);
+      gap: var(--dc-grid-gap);
     }
 
     .connection-card {
       background: var(--dc-bg-secondary);
       border: 1px solid var(--dc-border-subtle);
       border-radius: var(--dc-radius-md);
-      padding: var(--dc-space-lg);
+      padding: var(--dc-card-padding);
       transition: all var(--dc-duration-fast);
 
       &:hover {
@@ -349,32 +372,35 @@ import { SourceConnection, SourceType } from '../../core/models';
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: var(--dc-space-md);
+        margin-bottom: var(--dc-header-gap);
       }
 
       .card-actions {
         display: flex;
-        gap: 4px;
+        gap: calc(var(--dc-space-unit) / 2);
       }
 
       .card-title {
-        margin: 0 0 var(--dc-space-md);
-        font-size: 1.125rem;
+        margin: 0 0 var(--dc-header-gap);
+        font-size: var(--dc-text-size-lg);
         font-weight: 600;
         color: var(--dc-text-primary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .card-details {
         display: flex;
         flex-direction: column;
         gap: var(--dc-space-xs);
-        margin-bottom: var(--dc-space-md);
+        margin-bottom: var(--dc-header-gap);
       }
 
       .detail-row {
         display: flex;
         gap: var(--dc-space-sm);
-        font-size: 0.875rem;
+        font-size: var(--dc-text-size-base);
       }
 
       .detail-label {
@@ -385,24 +411,28 @@ import { SourceConnection, SourceType } from '../../core/models';
       .detail-value {
         color: var(--dc-text-primary);
         font-family: monospace;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        max-width: 180px;
       }
 
       .card-footer {
-        padding-top: var(--dc-space-md);
+        padding-top: var(--dc-header-gap);
         border-top: 1px solid var(--dc-border-subtle);
       }
 
       .entry-count {
-        font-size: 0.875rem;
+        font-size: var(--dc-text-size-base);
         color: var(--dc-text-secondary);
       }
     }
 
     .source-type-badge {
       display: inline-block;
-      padding: 4px 12px;
+      padding: calc(var(--dc-space-unit) / 2) var(--dc-space-unit);
       border-radius: var(--dc-radius-sm);
-      font-size: 0.75rem;
+      font-size: var(--dc-text-size-sm);
       font-weight: 500;
       color: white;
     }
@@ -522,6 +552,14 @@ import { SourceConnection, SourceType } from '../../core/models';
     .info-text {
       color: var(--dc-text-secondary);
       font-size: 0.875rem;
+      font-style: italic;
+    }
+
+    .field-hint {
+      display: block;
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: var(--dc-text-secondary);
       font-style: italic;
     }
   `]

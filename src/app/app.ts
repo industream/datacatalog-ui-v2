@@ -25,6 +25,7 @@ import { HeaderComponent } from './layout/header/header.component';
     .main-content {
       flex: 1;
       margin-top: 48px; /* Header height */
+      margin-left: 4rem; /* Sidebar width */
       background: var(--dc-bg-primary);
     }
   `]
@@ -41,7 +42,7 @@ export class App implements OnInit {
   }
 
   private initializeDensity(): void {
-    const savedDensity = localStorage.getItem('dc-density') || 'default';
+    const savedDensity = localStorage.getItem('dc-density') || 'compact';
     document.documentElement.setAttribute('data-density', savedDensity);
   }
 }

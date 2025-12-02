@@ -5,6 +5,47 @@ import '@carbon/web-components/es/components/button/index.js';
 import { CatalogStore } from '../../store';
 import { Label } from '../../core/models';
 
+// Color palette for labels (distinct, visible colors)
+const LABEL_COLORS = [
+  '#0f62fe', // Blue
+  '#24a148', // Green
+  '#a56eff', // Purple
+  '#ff832b', // Orange
+  '#d02670', // Magenta
+  '#00bab6', // Teal
+  '#f1c21b', // Yellow
+  '#8a3ffc', // Violet
+  '#007d79', // Cyan dark
+  '#ba4e00', // Burnt orange
+  '#ee538b', // Pink
+  '#0072c3', // Blue dark
+];
+
+// Default labels to create when none exist
+const DEFAULT_LABELS = [
+  'Production',
+  'Development',
+  'Testing',
+  'Critical',
+  'Archived'
+];
+
+// Simple hash function to get consistent color for a label
+function hashString(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+export function getLabelColor(labelName: string): string {
+  const index = hashString(labelName) % LABEL_COLORS.length;
+  return LABEL_COLORS[index];
+}
+
 @Component({
   selector: 'app-labels',
   standalone: true,
@@ -61,7 +102,7 @@ import { Label } from '../../core/models';
                 </div>
               } @else {
                 <div class="label-content">
-                  <span class="label-badge">
+                  <span class="label-badge" [style.background]="getLabelColor(label.name)">
                     <span class="material-symbols-outlined">label</span>
                     {{ label.name }}
                   </span>
@@ -87,13 +128,14 @@ import { Label } from '../../core/models';
             @for (stat of labelStats(); track stat.label.id) {
               <div class="usage-item">
                 <div class="usage-info">
-                  <span class="label-badge small">{{ stat.label.name }}</span>
+                  <span class="label-badge small" [style.background]="getLabelColor(stat.label.name)">{{ stat.label.name }}</span>
                   <span class="usage-count">{{ stat.count }} entries</span>
                 </div>
                 <div class="usage-bar-container">
                   <div
                     class="usage-bar"
-                    [style.width.%]="stat.percentage">
+                    [style.width.%]="stat.percentage"
+                    [style.background]="getLabelColor(stat.label.name)">
                   </div>
                 </div>
               </div>
@@ -232,7 +274,6 @@ import { Label } from '../../core/models';
       align-items: center;
       gap: var(--dc-space-xs);
       padding: 4px 12px;
-      background: var(--dc-primary);
       border-radius: var(--dc-radius-full);
       color: white;
       font-weight: 500;
@@ -366,7 +407,6 @@ import { Label } from '../../core/models';
 
     .usage-bar {
       height: 100%;
-      background: var(--dc-primary);
       border-radius: var(--dc-radius-full);
       transition: width var(--dc-duration-slow) var(--dc-easing-standard);
       min-width: 4px;
@@ -455,6 +495,7 @@ export class LabelsComponent implements OnInit {
   readonly newLabelName = signal('');
   readonly editingLabel = signal<Label | null>(null);
   readonly editName = signal('');
+  private defaultLabelsCreated = false;
 
   readonly labelStats = computed(() => {
     const labels = this.store.labels();
@@ -475,6 +516,22 @@ export class LabelsComponent implements OnInit {
     if (this.store.labels().length === 0) {
       this.store.loadAll();
     }
+    // Check and create default labels after a short delay to allow data to load
+    setTimeout(() => this.checkAndCreateDefaultLabels(), 1000);
+  }
+
+  private checkAndCreateDefaultLabels(): void {
+    if (this.defaultLabelsCreated) return;
+    if (this.store.labels().length === 0 && !this.store.loading()) {
+      this.defaultLabelsCreated = true;
+      DEFAULT_LABELS.forEach(name => {
+        this.store.createLabel({ name });
+      });
+    }
+  }
+
+  getLabelColor(labelName: string): string {
+    return getLabelColor(labelName);
   }
 
   private getEntryCountForLabel(labelId: string, entries: { labels?: { id: string }[] }[]): number {

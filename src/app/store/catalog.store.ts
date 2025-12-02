@@ -10,7 +10,8 @@ import {
   CatalogEntryCreateRequest,
   CatalogEntryAmendRequest,
   SourceConnectionCreateRequest,
-  SourceConnectionAmendRequest
+  SourceConnectionAmendRequest,
+  ConflictStrategy
 } from '../core/models';
 
 // Source type colors mapping
@@ -260,6 +261,45 @@ export class CatalogStore {
     this.api.getSourceTypes().subscribe({
       next: (types) => this.sourceTypes.set(types),
       error: (err) => console.error('Failed to load source types:', err)
+    });
+  }
+
+  // ============ Import/Export ============
+  importCatalogEntries(file: File, conflictStrategy: ConflictStrategy = ConflictStrategy.Replace): Promise<{ success: boolean; error?: string }> {
+    this.loading.set(true);
+    this.error.set(null);
+
+    return new Promise((resolve) => {
+      this.api.importCatalogEntries(file, conflictStrategy).subscribe({
+        next: () => {
+          // Reload all data after import
+          this.loadAll();
+          resolve({ success: true });
+        },
+        error: (err) => {
+          const errorMessage = err.error?.title || err.message || 'Failed to import CSV';
+          this.error.set(errorMessage);
+          this.loading.set(false);
+          resolve({ success: false, error: errorMessage });
+        }
+      });
+    });
+  }
+
+  exportCatalogEntries(): void {
+    this.api.exportCatalogEntries().subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `datacatalog-export-${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+      },
+      error: (err) => {
+        this.error.set('Failed to export catalog');
+        console.error('Export error:', err);
+      }
     });
   }
 }
