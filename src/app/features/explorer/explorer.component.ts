@@ -154,10 +154,10 @@ interface EntryFormData {
                         </td>
                         <td class="source-col">
                           <div class="source-info">
-                            <span class="source-type-badge" [style.background]="getSourceColor(entry.sourceConnection?.sourceType?.name)">
-                              {{ entry.sourceConnection?.sourceType?.name || 'Unknown' }}
+                            <span class="source-type-badge" [style.background]="getSourceColor(entry.sourceConnection.sourceType.name)">
+                              {{ entry.sourceConnection.sourceType.name || 'Unknown' }}
                             </span>
-                            <span class="source-name">{{ entry.sourceConnection?.name }}</span>
+                            <span class="source-name">{{ entry.sourceConnection.name }}</span>
                           </div>
                         </td>
                         <td class="params-col">
@@ -237,13 +237,13 @@ interface EntryFormData {
                 @for (entry of filteredEntries(); track entry.id) {
                   <div class="entry-card">
                     <div class="card-header">
-                      <span class="source-type-badge" [style.background]="getSourceColor(entry.sourceConnection?.sourceType?.name)">
-                        {{ entry.sourceConnection?.sourceType?.name || 'Unknown' }}
+                      <span class="source-type-badge" [style.background]="getSourceColor(entry.sourceConnection.sourceType.name)">
+                        {{ entry.sourceConnection.sourceType.name || 'Unknown' }}
                       </span>
                       <span class="data-type-badge">{{ entry.dataType }}</span>
                     </div>
                     <h3 class="card-title">{{ entry.name }}</h3>
-                    <p class="card-source">{{ entry.sourceConnection?.name }}</p>
+                    <p class="card-source">{{ entry.sourceConnection.name }}</p>
 
                     <div class="card-labels">
                       @for (label of (entry.labels || []).slice(0, 3); track label.id) {
@@ -321,10 +321,10 @@ interface EntryFormData {
                         }
                       </div>
                       <div class="list-item-meta">
-                        <span class="source-type-badge" [style.background]="getSourceColor(entry.sourceConnection?.sourceType?.name)">
-                          {{ entry.sourceConnection?.sourceType?.name }}
+                        <span class="source-type-badge" [style.background]="getSourceColor(entry.sourceConnection.sourceType.name)">
+                          {{ entry.sourceConnection.sourceType.name }}
                         </span>
-                        <span class="source-name">{{ entry.sourceConnection?.name }}</span>
+                        <span class="source-name">{{ entry.sourceConnection.name }}</span>
                         <div class="list-item-actions">
                           <button class="icon-btn" title="Edit" (click)="onEditEntry(entry); $event.stopPropagation()">
                             <span class="material-symbols-outlined">edit</span>
@@ -454,7 +454,7 @@ interface EntryFormData {
                   <option value="">Select source connection...</option>
                   @for (conn of store.sourceConnections(); track conn.id) {
                     <option [value]="conn.id" [selected]="conn.id === formData().sourceConnectionId">
-                      {{ conn.name }} ({{ conn.sourceType?.name }})
+                      {{ conn.name }} ({{ conn.sourceType.name }})
                     </option>
                   }
                 </select>

@@ -1,7 +1,6 @@
-import { Injectable, inject, signal, computed } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of, tap, forkJoin } from 'rxjs';
-import { ApiService } from '../core/services';
+import { Injectable, inject, signal, computed, OnDestroy } from '@angular/core';
+import { catchError, of, forkJoin } from 'rxjs';
+import { ApiService, PollingService } from '../core/services';
 import {
   CatalogEntry,
   SourceConnection,
@@ -29,8 +28,10 @@ const SOURCE_TYPE_COLORS: Record<string, string> = {
 };
 
 @Injectable({ providedIn: 'root' })
-export class CatalogStore {
+export class CatalogStore implements OnDestroy {
   private readonly api = inject(ApiService);
+  private readonly polling = inject(PollingService);
+  private readonly POLLING_KEY = 'catalog-store';
 
   // State signals
   readonly entries = signal<CatalogEntry[]>([]);
@@ -69,6 +70,15 @@ export class CatalogStore {
       .sort((a, b) => b.count - a.count);
   });
 
+  constructor() {
+    // Register for polling
+    this.polling.register(this.POLLING_KEY, () => this.refreshSilently());
+  }
+
+  ngOnDestroy(): void {
+    this.polling.unregister(this.POLLING_KEY);
+  }
+
   // Load all data
   loadAll(): void {
     this.loading.set(true);
@@ -91,6 +101,23 @@ export class CatalogStore {
         this.error.set('Failed to load data');
         this.loading.set(false);
         console.error('Store load error:', err);
+      }
+    });
+  }
+
+  // Silent refresh (no loading indicator) for polling
+  private refreshSilently(): void {
+    forkJoin({
+      entries: this.api.getCatalogEntries().pipe(catchError(() => of(this.entries()))),
+      connections: this.api.getSourceConnections().pipe(catchError(() => of(this.sourceConnections()))),
+      labels: this.api.getLabels().pipe(catchError(() => of(this.labels()))),
+      types: this.api.getSourceTypes().pipe(catchError(() => of(this.sourceTypes())))
+    }).subscribe({
+      next: ({ entries, connections, labels, types }) => {
+        this.entries.set(entries);
+        this.sourceConnections.set(connections);
+        this.labels.set(labels);
+        this.sourceTypes.set(types);
       }
     });
   }

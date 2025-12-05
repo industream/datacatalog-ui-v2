@@ -1,5 +1,6 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, signal } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, signal, inject, computed } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { PollingService } from '../../core/services';
 
 import '@carbon/web-components/es/components/ui-shell/index.js';
 
@@ -37,6 +38,16 @@ interface NavItem {
 
       <!-- Global Actions on the right -->
       <div class="cds--header__global">
+        <!-- Polling indicator -->
+        <div class="polling-indicator" [class.active]="pollingEnabled()" [title]="pollingTooltip()">
+          <button class="polling-btn" (click)="togglePolling()">
+            <span class="material-symbols-outlined" [class.spinning]="pollingEnabled()">sync</span>
+          </button>
+          <button class="refresh-btn" (click)="refreshNow()" title="Refresh now">
+            <span class="material-symbols-outlined">refresh</span>
+          </button>
+        </div>
+
         <cds-header-global-action
           aria-label="Toggle theme"
           [tooltip-text]="isDarkTheme() ? 'Switch to light mode' : 'Switch to dark mode'"
@@ -162,17 +173,80 @@ interface NavItem {
       padding: 0.75rem;
       color: var(--dc-text-primary);
     }
+
+    .polling-indicator {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      margin-right: 0.5rem;
+      padding: 0 4px;
+      border-radius: var(--dc-radius-sm);
+      background: transparent;
+
+      &.active {
+        background: color-mix(in srgb, var(--dc-success) 15%, transparent);
+
+        .polling-btn .material-symbols-outlined {
+          color: var(--dc-success);
+        }
+      }
+    }
+
+    .polling-btn,
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: transparent;
+      color: var(--dc-text-secondary);
+      cursor: pointer;
+      border-radius: var(--dc-radius-sm);
+      transition: all var(--dc-duration-fast);
+
+      &:hover {
+        background: var(--dc-bg-tertiary);
+        color: var(--dc-text-primary);
+      }
+
+      .material-symbols-outlined {
+        font-size: 18px;
+      }
+
+      .spinning {
+        animation: spin 2s linear infinite;
+      }
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
   `]
 })
 export class HeaderComponent {
+  private readonly pollingService = inject(PollingService);
+
   readonly navItems: NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { path: '/explorer', label: 'Explorer', icon: 'folder_open' },
+    { path: '/assets', label: 'Asset Dictionaries', icon: 'account_tree' },
     { path: '/sources', label: 'Sources', icon: 'cable' },
     { path: '/labels', label: 'Labels', icon: 'label' }
   ];
 
   readonly isDarkTheme = signal(true);
+  readonly pollingEnabled = this.pollingService.enabled;
+
+  readonly pollingTooltip = computed(() => {
+    const enabled = this.pollingEnabled();
+    const interval = this.pollingService.intervalMs() / 1000;
+    return enabled
+      ? `Auto-refresh: ON (every ${interval}s). Click to disable.`
+      : 'Auto-refresh: OFF. Click to enable.';
+  });
 
   constructor() {
     this.loadThemePreference();
@@ -182,6 +256,14 @@ export class HeaderComponent {
     this.isDarkTheme.update(dark => !dark);
     this.applyTheme();
     this.saveThemePreference();
+  }
+
+  togglePolling(): void {
+    this.pollingService.toggle();
+  }
+
+  refreshNow(): void {
+    this.pollingService.refreshNow();
   }
 
   private loadThemePreference(): void {

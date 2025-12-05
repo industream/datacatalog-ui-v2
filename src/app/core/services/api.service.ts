@@ -13,7 +13,14 @@ import {
   Label,
   SourceType,
   ApiInfo,
-  ConflictStrategy
+  ConflictStrategy,
+  AssetDictionary,
+  AssetDictionaryCreateRequest,
+  AssetDictionaryAmendRequest,
+  AssetNode,
+  AssetNodeCreateRequest,
+  AssetNodeAmendRequest,
+  AssetNodeMoveRequest
 } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -157,5 +164,97 @@ export class ApiService {
     }
     return this.http.get<ItemCollection<SourceType>>(`${this.baseUrl}/source-types/`, { params })
       .pipe(map(res => res.items));
+  }
+
+  // ============ Asset Dictionaries ============
+  getAssetDictionaries(filters?: {
+    ids?: string[];
+    names?: string[];
+    includeNodes?: boolean;
+    asTree?: boolean;
+  }): Observable<AssetDictionary[]> {
+    let params = new HttpParams();
+    if (filters?.ids) {
+      filters.ids.forEach(id => params = params.append('ids', id));
+    }
+    if (filters?.names) {
+      filters.names.forEach(name => params = params.append('names', name));
+    }
+    if (filters?.includeNodes !== undefined) {
+      params = params.set('includeNodes', String(filters.includeNodes));
+    }
+    if (filters?.asTree !== undefined) {
+      params = params.set('asTree', String(filters.asTree));
+    }
+    return this.http.get<ItemCollection<AssetDictionary>>(`${this.baseUrl}/asset-dictionaries/`, { params })
+      .pipe(map(res => res.items));
+  }
+
+  getAssetDictionaryById(id: string, options?: {
+    includeNodes?: boolean;
+    asTree?: boolean;
+  }): Observable<AssetDictionary> {
+    let params = new HttpParams();
+    if (options?.includeNodes !== undefined) {
+      params = params.set('includeNodes', String(options.includeNodes));
+    }
+    if (options?.asTree !== undefined) {
+      params = params.set('asTree', String(options.asTree));
+    }
+    return this.http.get<AssetDictionary>(`${this.baseUrl}/asset-dictionaries/${id}`, { params });
+  }
+
+  createAssetDictionaries(dictionaries: AssetDictionaryCreateRequest[]): Observable<AssetDictionary[]> {
+    return this.http.post<ItemCollection<AssetDictionary>>(`${this.baseUrl}/asset-dictionaries/`, { items: dictionaries })
+      .pipe(map(res => res.items));
+  }
+
+  updateAssetDictionary(request: AssetDictionaryAmendRequest): Observable<AssetDictionary> {
+    return this.http.patch<AssetDictionary>(`${this.baseUrl}/asset-dictionaries/`, request);
+  }
+
+  deleteAssetDictionaries(ids: string[]): Observable<void> {
+    let params = new HttpParams();
+    ids.forEach(id => params = params.append('ids', id));
+    return this.http.delete<void>(`${this.baseUrl}/asset-dictionaries/`, { params });
+  }
+
+  // ============ Asset Nodes ============
+  getAssetNodes(dictionaryId: string, nodeIds?: string[]): Observable<AssetNode[]> {
+    let params = new HttpParams();
+    if (nodeIds) {
+      nodeIds.forEach(id => params = params.append('ids', id));
+    }
+    return this.http.get<ItemCollection<AssetNode>>(`${this.baseUrl}/asset-dictionaries/${dictionaryId}/nodes`, { params })
+      .pipe(map(res => res.items));
+  }
+
+  createAssetNode(dictionaryId: string, node: Omit<AssetNodeCreateRequest, 'dictionaryId'>): Observable<AssetNode> {
+    return this.http.post<AssetNode>(`${this.baseUrl}/asset-dictionaries/${dictionaryId}/nodes`, node);
+  }
+
+  updateAssetNode(dictionaryId: string, request: Omit<AssetNodeAmendRequest, 'dictionaryId'>): Observable<AssetNode> {
+    return this.http.patch<AssetNode>(`${this.baseUrl}/asset-dictionaries/${dictionaryId}/nodes`, request);
+  }
+
+  moveAssetNode(dictionaryId: string, nodeId: string, request: AssetNodeMoveRequest): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/asset-dictionaries/${dictionaryId}/nodes/${nodeId}/move`, request);
+  }
+
+  deleteAssetNode(dictionaryId: string, nodeId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/asset-dictionaries/${dictionaryId}/nodes/${nodeId}`);
+  }
+
+  // ============ Asset Node Entry Assignments ============
+  assignEntriesToNode(dictionaryId: string, nodeId: string, entryIds: string[]): Observable<void> {
+    return this.http.put<void>(`${this.baseUrl}/asset-dictionaries/${dictionaryId}/nodes/${nodeId}/entries`, { entryIds });
+  }
+
+  addEntryToNode(dictionaryId: string, nodeId: string, entryId: string): Observable<void> {
+    return this.http.post<void>(`${this.baseUrl}/asset-dictionaries/${dictionaryId}/nodes/${nodeId}/entries/${entryId}`, {});
+  }
+
+  removeEntryFromNode(dictionaryId: string, nodeId: string, entryId: string): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/asset-dictionaries/${dictionaryId}/nodes/${nodeId}/entries/${entryId}`);
   }
 }
