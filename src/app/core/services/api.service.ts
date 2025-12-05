@@ -1,7 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
-import { environment } from '../../../environments/environment';
+import { Observable, map, tap } from 'rxjs';
 import {
   ItemCollection,
   CatalogEntry,
@@ -22,11 +21,16 @@ import {
   AssetNodeAmendRequest,
   AssetNodeMoveRequest
 } from '../models';
+import { ConfigService } from './config.service';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
-  private readonly baseUrl = environment.apiUrl;
+  private readonly configService = inject(ConfigService);
+
+  private get baseUrl(): string {
+    return this.configService.apiUrl;
+  }
 
   // ============ API Info ============
   getInfo(): Observable<ApiInfo> {
@@ -186,8 +190,13 @@ export class ApiService {
     if (filters?.asTree !== undefined) {
       params = params.set('asTree', String(filters.asTree));
     }
-    return this.http.get<ItemCollection<AssetDictionary>>(`${this.baseUrl}/asset-dictionaries/`, { params })
-      .pipe(map(res => res.items));
+    const url = `${this.baseUrl}/asset-dictionaries/`;
+    console.log('[ApiService] GET asset-dictionaries URL:', url, 'params:', params.toString());
+    return this.http.get<ItemCollection<AssetDictionary>>(url, { params })
+      .pipe(
+        tap(res => console.log('[ApiService] Raw response:', res)),
+        map(res => res.items)
+      );
   }
 
   getAssetDictionaryById(id: string, options?: {

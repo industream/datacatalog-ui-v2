@@ -218,13 +218,13 @@ export class AssetEditorComponent implements OnInit {
         this.catalogStore.loadAll();
       }
     } else {
-      this.router.navigate(['/assets']);
+      this.router.navigate(['/asset-dictionaries']);
     }
   }
 
   // Navigation
   goBack(): void {
-    this.router.navigate(['/assets']);
+    this.router.navigate(['/asset-dictionaries']);
   }
 
   // Search

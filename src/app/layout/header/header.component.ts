@@ -232,7 +232,7 @@ export class HeaderComponent {
   readonly navItems: NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
     { path: '/explorer', label: 'Explorer', icon: 'folder_open' },
-    { path: '/assets', label: 'Asset Dictionaries', icon: 'account_tree' },
+    { path: '/asset-dictionaries', label: 'Asset Dictionaries', icon: 'account_tree' },
     { path: '/sources', label: 'Sources', icon: 'cable' },
     { path: '/labels', label: 'Labels', icon: 'label' }
   ];
