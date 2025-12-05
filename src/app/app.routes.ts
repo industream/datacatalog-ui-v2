@@ -19,6 +19,18 @@ export const routes: Routes = [
     title: 'Explorer - DataCatalog'
   },
   {
+    path: 'assets',
+    loadComponent: () => import('./features/assets/assets.component')
+      .then(m => m.AssetsComponent),
+    title: 'Asset Dictionaries - DataCatalog'
+  },
+  {
+    path: 'assets/:id',
+    loadComponent: () => import('./features/assets/asset-editor.component')
+      .then(m => m.AssetEditorComponent),
+    title: 'Asset Editor - DataCatalog'
+  },
+  {
     path: 'sources',
     loadComponent: () => import('./features/sources/sources.component')
       .then(m => m.SourcesComponent),

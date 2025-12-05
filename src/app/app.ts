@@ -1,11 +1,12 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './layout/header/header.component';
+import { ConfirmationDialogComponent } from './shared/components';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, HeaderComponent],
+  imports: [RouterOutlet, HeaderComponent, ConfirmationDialogComponent],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     <div class="app-container">
@@ -13,6 +14,7 @@ import { HeaderComponent } from './layout/header/header.component';
       <main class="main-content">
         <router-outlet />
       </main>
+      <app-confirmation-dialog />
     </div>
   `,
   styles: [`
@@ -25,6 +27,7 @@ import { HeaderComponent } from './layout/header/header.component';
     .main-content {
       flex: 1;
       margin-top: 48px; /* Header height */
+      margin-left: 4rem; /* Sidebar width */
       background: var(--dc-bg-primary);
     }
   `]
@@ -41,7 +44,7 @@ export class App implements OnInit {
   }
 
   private initializeDensity(): void {
-    const savedDensity = localStorage.getItem('dc-density') || 'default';
+    const savedDensity = localStorage.getItem('dc-density') || 'compact';
     document.documentElement.setAttribute('data-density', savedDensity);
   }
 }

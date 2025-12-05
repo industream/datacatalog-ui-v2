@@ -74,23 +74,44 @@
   --dc-border-interactive: #0f62fe;
 }
 
-// Density modes
+// Density modes - these affect spacing, padding, and font sizes throughout the UI
 :root[data-density="compact"] {
   --dc-space-unit: 0.25rem;
-  --dc-text-size: 0.8125rem;
+  --dc-text-size-base: 0.8125rem;
+  --dc-text-size-sm: 0.6875rem;
+  --dc-text-size-lg: 0.9375rem;
   --dc-card-padding: 0.75rem;
+  --dc-table-cell-padding: 0.5rem 0.75rem;
+  --dc-button-padding: 6px 12px;
+  --dc-input-padding: 6px 10px;
+  --dc-header-gap: 0.75rem;
+  --dc-grid-gap: 0.75rem;
 }
 
 :root[data-density="default"] {
   --dc-space-unit: 0.5rem;
-  --dc-text-size: 0.875rem;
+  --dc-text-size-base: 0.875rem;
+  --dc-text-size-sm: 0.75rem;
+  --dc-text-size-lg: 1rem;
   --dc-card-padding: 1rem;
+  --dc-table-cell-padding: 0.75rem 1rem;
+  --dc-button-padding: 8px 16px;
+  --dc-input-padding: 10px 12px;
+  --dc-header-gap: 1rem;
+  --dc-grid-gap: 1rem;
 }
 
 :root[data-density="comfortable"] {
   --dc-space-unit: 0.75rem;
-  --dc-text-size: 1rem;
+  --dc-text-size-base: 1rem;
+  --dc-text-size-sm: 0.875rem;
+  --dc-text-size-lg: 1.125rem;
   --dc-card-padding: 1.5rem;
+  --dc-table-cell-padding: 1rem 1.25rem;
+  --dc-button-padding: 12px 20px;
+  --dc-input-padding: 12px 16px;
+  --dc-header-gap: 1.25rem;
+  --dc-grid-gap: 1.5rem;
 }
 
 // Base styles
@@ -110,9 +131,51 @@ body {
   margin: 0;
   padding: 0;
   font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  font-size: var(--dc-text-size-base);
   background-color: var(--dc-bg-primary);
   color: var(--dc-text-primary);
   line-height: 1.5;
+}
+
+// Global density-aware styles for common elements
+h1 {
+  font-size: calc(var(--dc-text-size-base) * 2.25);
+}
+
+h2 {
+  font-size: calc(var(--dc-text-size-base) * 1.75);
+}
+
+h3 {
+  font-size: calc(var(--dc-text-size-base) * 1.375);
+}
+
+p {
+  font-size: var(--dc-text-size-base);
+}
+
+small {
+  font-size: var(--dc-text-size-sm);
+}
+
+// Form elements with density-aware spacing
+input, select, textarea {
+  font-size: var(--dc-text-size-base);
+  padding: var(--dc-input-padding);
+}
+
+button {
+  font-size: var(--dc-text-size-base);
+  padding: var(--dc-button-padding);
+}
+
+// Table elements with density
+table {
+  font-size: var(--dc-text-size-base);
+
+  th, td {
+    padding: var(--dc-table-cell-padding);
+  }
 }
 
 // Focus styles
@@ -225,4 +288,39 @@ body {
   word-wrap: normal;
   direction: ltr;
   -webkit-font-smoothing: antialiased;
+}
+
+// Carbon button icon fix - align Material Symbols icons properly
+cds-button {
+  // Ensure button content is properly aligned
+  &::part(button) {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  // Fix icon slot alignment
+  [slot="icon"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px !important;
+    width: 18px;
+    height: 18px;
+  }
+
+  .material-symbols-outlined {
+    font-size: 18px !important;
+    vertical-align: middle;
+  }
+}
+
+// Spin animation for loading icons
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
