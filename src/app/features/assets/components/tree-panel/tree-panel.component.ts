@@ -2,11 +2,12 @@ import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AssetNode } from '../../../../core/models';
 import { TreeNodeComponent, TreeNodeAction, TreeNodeDragEvent } from '../tree-node/tree-node.component';
+import { SkeletonComponent } from '../../../../shared/components';
 
 @Component({
   selector: 'app-tree-panel',
   standalone: true,
-  imports: [CommonModule, TreeNodeComponent],
+  imports: [CommonModule, TreeNodeComponent, SkeletonComponent],
   template: `
     <div class="tree-panel">
       <div class="panel-header">
@@ -17,7 +18,16 @@ import { TreeNodeComponent, TreeNodeAction, TreeNodeDragEvent } from '../tree-no
       <div class="tree-container"
            (dragover)="onDragOver($event)"
            (drop)="dropOnRoot.emit($event)">
-        @if (nodes.length === 0) {
+        @if (loading) {
+          <div class="skeleton-tree">
+            @for (item of [1,2,3,4,5]; track item) {
+              <div class="skeleton-node" [style.padding-left.px]="item % 2 === 0 ? 24 : 0">
+                <app-skeleton type="avatar" width="24px" height="24px"></app-skeleton>
+                <app-skeleton type="text" [width]="item % 3 === 0 ? '60%' : '80%'"></app-skeleton>
+              </div>
+            }
+          </div>
+        } @else if (nodes.length === 0) {
           <div class="empty-tree">
             <span class="material-symbols-outlined">account_tree</span>
             <p>No nodes yet</p>
@@ -131,11 +141,25 @@ import { TreeNodeComponent, TreeNodeAction, TreeNodeDragEvent } from '../tree-no
       display: flex;
       flex-direction: column;
     }
+
+    .skeleton-tree {
+      display: flex;
+      flex-direction: column;
+      gap: var(--dc-space-sm);
+    }
+
+    .skeleton-node {
+      display: flex;
+      align-items: center;
+      gap: var(--dc-space-sm);
+      padding: var(--dc-space-sm);
+    }
   `]
 })
 export class TreePanelComponent {
   @Input() nodes: AssetNode[] = [];
   @Input() nodeCount = 0;
+  @Input() loading = false;
   @Input() selectedNodeId: string | null = null;
   @Input() dragOverNodeId: string | null = null;
 

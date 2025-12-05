@@ -16,8 +16,8 @@ import {
   EditorHeaderComponent,
   TreePanelComponent,
   EntriesPanelComponent,
-  EntryDragStartEvent,
-  EntrySelectEvent
+  EntriesPanelDragEvent,
+  EntriesPanelSelectEvent
 } from './components';
 
 @Component({
@@ -47,6 +47,7 @@ import {
           [nodeCount]="flatNodes().length"
           [selectedNodeId]="selectedNodeId()"
           [dragOverNodeId]="dragOverNodeId()"
+          [loading]="store.loading()"
           (nodeAction)="onTreeNodeAction($event)"
           (nodeDrag)="onTreeNodeDrag($event)"
           (addRootNode)="addRootNode()"
@@ -65,6 +66,7 @@ import {
           [selectedEntryIds]="selectedEntryIds()"
           [nodeEntryMap]="nodeEntryMap()"
           [nodeNameMap]="nodeNameMap()"
+          [loading]="catalogStore.loading()"
           (searchChange)="onSearchChange($event)"
           (labelSelect)="setLabelFilter($event)"
           (entrySelect)="onEntryClick($event)"
@@ -398,7 +400,7 @@ export class AssetEditorComponent implements OnInit {
   }
 
   // Entry drag & drop
-  onEntryDragStart(event: EntryDragStartEvent): void {
+  onEntryDragStart(event: EntriesPanelDragEvent): void {
     this.draggedEntry = event.entry;
 
     const selectedIds = this.selectedEntryIds();
@@ -435,10 +437,8 @@ export class AssetEditorComponent implements OnInit {
         : [this.draggedEntry.id])
       : [];
 
-    idsToAssign.forEach(entryId => {
-      this.store.addEntryToNode(dict.id, nodeId, entryId);
-    });
-
+    // Use batch operation instead of N+1 calls
+    this.store.addEntriesToNode(dict.id, nodeId, idsToAssign);
     this.clearSelection();
   }
 
@@ -464,10 +464,8 @@ export class AssetEditorComponent implements OnInit {
     const nodeId = this.selectedNodeId();
     if (!dict || !nodeId) return;
 
-    this.selectedEntryIds().forEach(entryId => {
-      this.store.addEntryToNode(dict.id, nodeId, entryId);
-    });
-
+    // Use batch operation instead of N+1 calls
+    this.store.addEntriesToNode(dict.id, nodeId, Array.from(this.selectedEntryIds()));
     this.clearSelection();
   }
 
@@ -486,7 +484,7 @@ export class AssetEditorComponent implements OnInit {
     this.lastClickedEntryId = entryId;
   }
 
-  onEntryClick(event: EntrySelectEvent): void {
+  onEntryClick(event: EntriesPanelSelectEvent): void {
     const mouseEvent = event.event;
     const entry = event.entry;
 

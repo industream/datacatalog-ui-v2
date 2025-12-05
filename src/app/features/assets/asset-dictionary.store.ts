@@ -10,12 +10,13 @@ import {
   AssetDictionaryTemplate,
   AssetTemplateNode
 } from '../../core/models';
-import { ApiService, PollingService } from '../../core/services';
+import { ApiService, PollingService, ToastService } from '../../core/services';
 
 @Injectable({ providedIn: 'root' })
 export class AssetDictionaryStore implements OnDestroy {
   private readonly api = inject(ApiService);
   private readonly polling = inject(PollingService);
+  private readonly toastService = inject(ToastService);
   private readonly POLLING_KEY = 'asset-dictionary-store';
 
   private readonly _dictionaries = signal<AssetDictionary[]>([]);
@@ -66,7 +67,8 @@ export class AssetDictionaryStore implements OnDestroy {
   private async executeWithErrorHandling<T>(
     operation: () => Promise<T>,
     errorMessage: string,
-    showLoading = false
+    showLoading = false,
+    showToast = true
   ): Promise<T | null> {
     this._error.set(null);
     if (showLoading) {
@@ -78,6 +80,9 @@ export class AssetDictionaryStore implements OnDestroy {
     } catch (error) {
       console.error(`${errorMessage}:`, error);
       this._error.set(errorMessage);
+      if (showToast) {
+        this.toastService.error(errorMessage);
+      }
       return null;
     } finally {
       if (showLoading) {
@@ -274,21 +279,35 @@ export class AssetDictionaryStore implements OnDestroy {
     nodeId: string,
     entryId: string
   ): Promise<void> {
+    await this.addEntriesToNode(dictionaryId, nodeId, [entryId]);
+  }
+
+  async addEntriesToNode(
+    dictionaryId: string,
+    nodeId: string,
+    entryIds: string[]
+  ): Promise<void> {
+    if (entryIds.length === 0) return;
+
+    // Get current entries for the node
+    const dictionary = this._dictionaries().find(d => d.id === dictionaryId);
+    const node = dictionary?.nodes.find(n => n.id === nodeId);
+    const currentEntryIds = node?.entryIds || [];
+
+    // Merge with new entries (avoid duplicates)
+    const newEntryIds = [...new Set([...currentEntryIds, ...entryIds])];
+
     await this.executeWithErrorHandling(
       async () => {
         await firstValueFrom(
-          this.api.addEntryToNode(dictionaryId, nodeId, entryId)
+          this.api.assignEntriesToNode(dictionaryId, nodeId, newEntryIds)
         );
 
         this.updateNodeInDictionary(dictionaryId, nodes =>
-          nodes.map(node => {
-            if (node.id !== nodeId) return node;
-            if (node.entryIds.includes(entryId)) return node;
-            return { ...node, entryIds: [...node.entryIds, entryId] };
-          })
+          nodes.map(n => n.id === nodeId ? { ...n, entryIds: newEntryIds } : n)
         );
       },
-      'Failed to add entry to node'
+      'Failed to add entries to node'
     );
   }
 

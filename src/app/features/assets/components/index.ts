@@ -6,3 +6,5 @@ export * from './label-filter/label-filter.component';
 export * from './editor-header/editor-header.component';
 export * from './tree-panel/tree-panel.component';
 export * from './entries-panel/entries-panel.component';
+export * from './assigned-entries/assigned-entries.component';
+export * from './available-entries/available-entries.component';

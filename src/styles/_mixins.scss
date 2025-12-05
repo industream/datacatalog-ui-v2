@@ -1,0 +1,419 @@
+// DataCatalog UI V2 - Shared Mixins & Patterns
+
+// ============ Layout Patterns ============
+
+@mixin panel-base {
+  display: flex;
+  flex-direction: column;
+  background: var(--dc-bg-secondary);
+  border-radius: var(--dc-radius-lg);
+  overflow: hidden;
+  height: 100%;
+}
+
+@mixin panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--dc-space-md) var(--dc-space-lg);
+  border-bottom: 1px solid var(--dc-border-subtle);
+  flex-shrink: 0;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+}
+
+@mixin panel-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--dc-space-md);
+}
+
+// ============ Empty States ============
+
+@mixin empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--dc-space-2xl);
+  text-align: center;
+  background: var(--dc-bg-secondary);
+  border: 2px dashed var(--dc-border-subtle);
+  border-radius: var(--dc-radius-md);
+  min-height: 200px;
+
+  .material-symbols-outlined {
+    font-size: 48px;
+    color: var(--dc-text-secondary);
+    margin-bottom: var(--dc-space-md);
+    opacity: 0.5;
+  }
+
+  p {
+    margin: 0 0 var(--dc-space-md);
+    color: var(--dc-text-secondary);
+  }
+}
+
+// ============ Buttons ============
+
+@mixin icon-button($size: 32px) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: $size;
+  height: $size;
+  border: none;
+  background: transparent;
+  color: var(--dc-text-secondary);
+  cursor: pointer;
+  border-radius: var(--dc-radius-sm);
+  transition: all var(--dc-duration-fast);
+
+  &:hover {
+    background: var(--dc-bg-tertiary);
+    color: var(--dc-text-primary);
+  }
+
+  &.danger:hover {
+    background: color-mix(in srgb, var(--dc-error) 15%, transparent);
+    color: var(--dc-error);
+  }
+
+  .material-symbols-outlined {
+    font-size: calc($size * 0.5625);
+  }
+}
+
+@mixin primary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dc-space-xs);
+  padding: var(--dc-space-sm) var(--dc-space-md);
+  background: var(--dc-primary);
+  color: white;
+  border: none;
+  border-radius: var(--dc-radius-md);
+  cursor: pointer;
+  font-size: var(--dc-text-size-sm);
+  transition: all var(--dc-duration-fast);
+
+  &:hover {
+    background: var(--dc-primary-hover);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+}
+
+@mixin secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dc-space-xs);
+  padding: var(--dc-space-sm) var(--dc-space-md);
+  background: var(--dc-bg-tertiary);
+  color: var(--dc-text-primary);
+  border: 1px solid var(--dc-border-subtle);
+  border-radius: var(--dc-radius-md);
+  cursor: pointer;
+  font-size: var(--dc-text-size-sm);
+  transition: all var(--dc-duration-fast);
+
+  &:hover {
+    border-color: var(--dc-primary);
+    color: var(--dc-primary);
+  }
+
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+}
+
+// ============ Form Elements ============
+
+@mixin form-input {
+  width: 100%;
+  padding: var(--dc-input-padding);
+  background: var(--dc-bg-tertiary);
+  border: 1px solid var(--dc-border-subtle);
+  border-radius: var(--dc-radius-sm);
+  color: var(--dc-text-primary);
+  font-size: var(--dc-text-size-base);
+
+  &:focus {
+    outline: none;
+    border-color: var(--dc-primary);
+  }
+
+  &::placeholder {
+    color: var(--dc-text-placeholder);
+  }
+}
+
+@mixin form-group {
+  margin-bottom: var(--dc-space-lg);
+
+  label {
+    display: block;
+    margin-bottom: var(--dc-space-xs);
+    font-weight: 500;
+    font-size: var(--dc-text-size-sm);
+  }
+}
+
+// ============ Cards ============
+
+@mixin card-base {
+  background: var(--dc-bg-secondary);
+  border: 1px solid var(--dc-border-subtle);
+  border-radius: var(--dc-radius-md);
+  padding: var(--dc-card-padding);
+  transition: all var(--dc-duration-fast);
+
+  &:hover {
+    border-color: var(--dc-primary);
+    box-shadow: var(--dc-shadow-md);
+  }
+}
+
+@mixin card-interactive {
+  @include card-base;
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+// ============ Badges & Counts ============
+
+@mixin count-badge {
+  background: var(--dc-bg-tertiary);
+  padding: 2px 8px;
+  border-radius: var(--dc-radius-full);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+@mixin status-badge($color) {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--dc-space-xs);
+  padding: 2px 8px;
+  background: color-mix(in srgb, $color 15%, transparent);
+  color: $color;
+  border-radius: var(--dc-radius-full);
+  font-size: var(--dc-text-size-sm);
+  font-weight: 500;
+}
+
+// ============ Modal ============
+
+@mixin modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--dc-space-xl);
+}
+
+@mixin modal-content {
+  background: var(--dc-bg-secondary);
+  border: 1px solid var(--dc-border-subtle);
+  border-radius: var(--dc-radius-lg);
+  width: 100%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--dc-shadow-lg);
+}
+
+@mixin modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--dc-space-lg);
+  border-bottom: 1px solid var(--dc-border-subtle);
+
+  h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+}
+
+@mixin modal-body {
+  padding: var(--dc-space-lg);
+  overflow-y: auto;
+  flex: 1;
+}
+
+@mixin modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--dc-space-sm);
+  padding: var(--dc-space-lg);
+  border-top: 1px solid var(--dc-border-subtle);
+}
+
+// ============ Lists ============
+
+@mixin list-item-base {
+  display: flex;
+  align-items: center;
+  gap: var(--dc-space-sm);
+  padding: var(--dc-space-sm);
+  background: var(--dc-bg-tertiary);
+  border-radius: var(--dc-radius-sm);
+  transition: all var(--dc-duration-fast);
+
+  &:hover {
+    background: var(--dc-bg-secondary);
+  }
+}
+
+@mixin list-item-selectable {
+  @include list-item-base;
+  cursor: pointer;
+
+  &.selected {
+    background: color-mix(in srgb, var(--dc-primary) 15%, transparent);
+    border: 1px solid var(--dc-primary);
+  }
+}
+
+// ============ Section Headers ============
+
+@mixin section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--dc-space-sm);
+  margin: 0 0 var(--dc-space-sm);
+  font-size: var(--dc-text-size-sm);
+  font-weight: 600;
+  color: var(--dc-text-secondary);
+
+  .material-symbols-outlined {
+    font-size: 18px;
+  }
+
+  .count-badge {
+    @include count-badge;
+  }
+}
+
+// ============ Help Hints ============
+
+@mixin help-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--dc-space-sm);
+  padding: var(--dc-space-sm) var(--dc-space-md);
+  background: color-mix(in srgb, var(--dc-info) 10%, transparent);
+  border-radius: var(--dc-radius-md);
+  font-size: 12px;
+  color: var(--dc-text-secondary);
+  margin-bottom: var(--dc-space-sm);
+
+  .material-symbols-outlined {
+    font-size: 16px;
+    color: var(--dc-info);
+  }
+
+  kbd {
+    background: var(--dc-bg-tertiary);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 11px;
+  }
+}
+
+// ============ Drag & Drop ============
+
+@mixin drop-zone {
+  border: 2px dashed var(--dc-border-subtle);
+  border-radius: var(--dc-radius-md);
+  background: color-mix(in srgb, var(--dc-primary) 5%, transparent);
+  transition: all var(--dc-duration-fast);
+
+  &.drag-over {
+    border-color: var(--dc-primary);
+    background: color-mix(in srgb, var(--dc-primary) 10%, transparent);
+  }
+}
+
+// ============ Grid Layouts ============
+
+@mixin responsive-grid($min-width: 320px) {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax($min-width, 1fr));
+  gap: var(--dc-grid-gap);
+}
+
+// ============ Selectors ============
+
+@mixin icon-selector-option {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--dc-border-subtle);
+  background: var(--dc-bg-tertiary);
+  border-radius: var(--dc-radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dc-text-secondary);
+  transition: all var(--dc-duration-fast);
+
+  &:hover {
+    border-color: var(--dc-primary);
+    color: var(--dc-text-primary);
+  }
+
+  &.selected {
+    border-color: var(--dc-primary);
+    background: var(--dc-primary);
+    color: white;
+  }
+
+  .material-symbols-outlined {
+    font-size: 20px;
+  }
+}
+
+@mixin color-selector-option {
+  width: 32px;
+  height: 32px;
+  border: 2px solid transparent;
+  border-radius: var(--dc-radius-sm);
+  cursor: pointer;
+  transition: all var(--dc-duration-fast);
+
+  &:hover {
+    transform: scale(1.1);
+  }
+
+  &.selected {
+    border-color: var(--dc-text-primary);
+    box-shadow: 0 0 0 2px var(--dc-bg-secondary);
+  }
+}

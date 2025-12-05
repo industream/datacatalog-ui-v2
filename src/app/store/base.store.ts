@@ -1,10 +1,13 @@
-import { signal } from '@angular/core';
+import { signal, inject } from '@angular/core';
 import { Observable } from 'rxjs';
+import { ToastService } from '../core/services/toast.service';
 
 /**
  * Base store class providing common state management patterns
  */
 export abstract class BaseStore {
+  protected readonly toastService = inject(ToastService);
+
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
@@ -14,7 +17,8 @@ export abstract class BaseStore {
   protected executeWithLoading<T>(
     operation: Observable<T>,
     onSuccess: (result: T) => void,
-    errorMessage: string
+    errorMessage: string,
+    showToast = true
   ): void {
     this.loading.set(true);
     this.error.set(null);
@@ -27,6 +31,9 @@ export abstract class BaseStore {
       error: () => {
         this.error.set(errorMessage);
         this.loading.set(false);
+        if (showToast) {
+          this.toastService.error(errorMessage);
+        }
       }
     });
   }
