@@ -279,7 +279,7 @@ export class AssetsComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    this.store.loadDictionaries();
+    // Store already loads dictionaries in its constructor
   }
 
   onNameInput(event: Event): void {
@@ -293,7 +293,7 @@ export class AssetsComponent implements OnInit {
   }
 
   openDictionary(dict: AssetDictionary): void {
-    this.router.navigate(['/assets', dict.id]);
+    this.router.navigate(['/asset-dictionaries', dict.id]);
   }
 
   editDictionary(dict: AssetDictionary): void {

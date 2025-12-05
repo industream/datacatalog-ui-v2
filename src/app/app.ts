@@ -1,12 +1,12 @@
 import { Component, CUSTOM_ELEMENTS_SCHEMA, OnInit } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { HeaderComponent } from './layout/header/header.component';
-import { ConfirmationDialogComponent } from './shared/components';
+import { ConfirmationDialogComponent, ToastContainerComponent } from './shared/components';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, HeaderComponent, ConfirmationDialogComponent],
+  imports: [RouterOutlet, HeaderComponent, ConfirmationDialogComponent, ToastContainerComponent],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     <div class="app-container">
@@ -15,6 +15,7 @@ import { ConfirmationDialogComponent } from './shared/components';
         <router-outlet />
       </main>
       <app-confirmation-dialog />
+      <app-toast-container />
     </div>
   `,
   styles: [`

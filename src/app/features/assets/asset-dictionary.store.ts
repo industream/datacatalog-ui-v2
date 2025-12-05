@@ -10,12 +10,14 @@ import {
   AssetDictionaryTemplate,
   AssetTemplateNode
 } from '../../core/models';
-import { ApiService, PollingService } from '../../core/services';
+import { ApiService, PollingService, ToastService, ConfigService } from '../../core/services';
 
 @Injectable({ providedIn: 'root' })
 export class AssetDictionaryStore implements OnDestroy {
   private readonly api = inject(ApiService);
   private readonly polling = inject(PollingService);
+  private readonly toastService = inject(ToastService);
+  private readonly configService = inject(ConfigService);
   private readonly POLLING_KEY = 'asset-dictionary-store';
 
   private readonly _dictionaries = signal<AssetDictionary[]>([]);
@@ -51,13 +53,18 @@ export class AssetDictionaryStore implements OnDestroy {
 
   // Silent refresh (no loading indicator) for polling
   private async refreshSilently(): Promise<void> {
+    console.log('[AssetDictionaryStore] Polling refresh triggered');
+    // Wait for config to be loaded before making API calls
+    await this.configService.waitForConfig();
+
     try {
       const dictionaries = await firstValueFrom(
         this.api.getAssetDictionaries({ includeNodes: true })
       );
+      console.log('[AssetDictionaryStore] Polling refresh loaded:', dictionaries?.length);
       this._dictionaries.set(dictionaries);
-    } catch {
-      // Silently fail on polling errors
+    } catch (error) {
+      console.error('[AssetDictionaryStore] Polling refresh error:', error);
     }
   }
 
@@ -66,7 +73,8 @@ export class AssetDictionaryStore implements OnDestroy {
   private async executeWithErrorHandling<T>(
     operation: () => Promise<T>,
     errorMessage: string,
-    showLoading = false
+    showLoading = false,
+    showToast = true
   ): Promise<T | null> {
     this._error.set(null);
     if (showLoading) {
@@ -78,6 +86,9 @@ export class AssetDictionaryStore implements OnDestroy {
     } catch (error) {
       console.error(`${errorMessage}:`, error);
       this._error.set(errorMessage);
+      if (showToast) {
+        this.toastService.error(errorMessage);
+      }
       return null;
     } finally {
       if (showLoading) {
@@ -112,17 +123,36 @@ export class AssetDictionaryStore implements OnDestroy {
   // ============ Public API ============
 
   async loadDictionaries(): Promise<void> {
-    await this.executeWithErrorHandling(
-      async () => {
-        const dictionaries = await firstValueFrom(
-          this.api.getAssetDictionaries({ includeNodes: true })
-        );
+    // Wait for config to be loaded before making API calls
+    await this.configService.waitForConfig();
+
+    console.log('[AssetDictionaryStore] Loading dictionaries from:', this.configService.apiUrl);
+    console.log('[AssetDictionaryStore] Config loaded:', this.configService.isLoaded);
+
+    try {
+      this._loading.set(true);
+      this._error.set(null);
+
+      console.log('[AssetDictionaryStore] Making API call...');
+      const observable = this.api.getAssetDictionaries({ includeNodes: true });
+      console.log('[AssetDictionaryStore] Observable created:', observable);
+
+      const dictionaries = await firstValueFrom(observable);
+      console.log('[AssetDictionaryStore] Loaded dictionaries:', dictionaries?.length, dictionaries);
+
+      if (dictionaries && dictionaries.length > 0) {
         this._dictionaries.set(dictionaries);
-        return dictionaries;
-      },
-      'Failed to load asset dictionaries',
-      true
-    );
+      } else {
+        console.warn('[AssetDictionaryStore] No dictionaries returned or empty array');
+        this._dictionaries.set(dictionaries || []);
+      }
+    } catch (error) {
+      console.error('[AssetDictionaryStore] Error loading dictionaries:', error);
+      this._error.set('Failed to load asset dictionaries');
+      this.toastService.error('Failed to load asset dictionaries');
+    } finally {
+      this._loading.set(false);
+    }
   }
 
   selectDictionary(id: string | null): void {
@@ -274,21 +304,35 @@ export class AssetDictionaryStore implements OnDestroy {
     nodeId: string,
     entryId: string
   ): Promise<void> {
+    await this.addEntriesToNode(dictionaryId, nodeId, [entryId]);
+  }
+
+  async addEntriesToNode(
+    dictionaryId: string,
+    nodeId: string,
+    entryIds: string[]
+  ): Promise<void> {
+    if (entryIds.length === 0) return;
+
+    // Get current entries for the node
+    const dictionary = this._dictionaries().find(d => d.id === dictionaryId);
+    const node = dictionary?.nodes.find(n => n.id === nodeId);
+    const currentEntryIds = node?.entryIds || [];
+
+    // Merge with new entries (avoid duplicates)
+    const newEntryIds = [...new Set([...currentEntryIds, ...entryIds])];
+
     await this.executeWithErrorHandling(
       async () => {
         await firstValueFrom(
-          this.api.addEntryToNode(dictionaryId, nodeId, entryId)
+          this.api.assignEntriesToNode(dictionaryId, nodeId, newEntryIds)
         );
 
         this.updateNodeInDictionary(dictionaryId, nodes =>
-          nodes.map(node => {
-            if (node.id !== nodeId) return node;
-            if (node.entryIds.includes(entryId)) return node;
-            return { ...node, entryIds: [...node.entryIds, entryId] };
-          })
+          nodes.map(n => n.id === nodeId ? { ...n, entryIds: newEntryIds } : n)
         );
       },
-      'Failed to add entry to node'
+      'Failed to add entries to node'
     );
   }
 

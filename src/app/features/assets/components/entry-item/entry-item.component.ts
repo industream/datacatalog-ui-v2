@@ -3,6 +3,16 @@ import { CommonModule } from '@angular/common';
 import { CatalogEntry, Label } from '../../../../core/models';
 import { LabelColorService } from '../../../../core/services';
 
+export interface EntryDragEvent {
+  event: DragEvent;
+  entry: CatalogEntry;
+}
+
+export interface EntrySelectEvent {
+  event: MouseEvent;
+  entry: CatalogEntry;
+}
+
 @Component({
   selector: 'app-entry-item',
   standalone: true,

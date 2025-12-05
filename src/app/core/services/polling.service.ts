@@ -59,9 +59,12 @@ export class PollingService implements OnDestroy {
     const callback = this.callbacks.get(key);
     if (!callback) return;
 
+    console.log(`[PollingService] Starting polling for '${key}' every ${this.intervalMs()}ms`);
+
     const subscription = interval(this.intervalMs())
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
+        console.log(`[PollingService] Triggering callback for '${key}'`);
         callback();
         this.lastRefresh.set(new Date());
       });
