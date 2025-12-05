@@ -62,6 +62,19 @@ export interface AvailableEntrySelectEvent {
   `,
   styles: [`
     .available-section {
+    :host {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .available-section {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+
       h3 {
         display: flex;
         align-items: center;
@@ -70,6 +83,7 @@ export interface AvailableEntrySelectEvent {
         font-size: var(--dc-text-size-sm);
         font-weight: 600;
         color: var(--dc-text-secondary);
+        flex-shrink: 0;
 
         .material-symbols-outlined {
           font-size: 18px;
@@ -89,6 +103,9 @@ export interface AvailableEntrySelectEvent {
       display: flex;
       flex-direction: column;
       min-height: 100px;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
     }
 
     .empty-hint {
@@ -108,6 +125,7 @@ export interface AvailableEntrySelectEvent {
       font-size: 12px;
       color: var(--dc-text-secondary);
       margin-bottom: var(--dc-space-sm);
+      flex-shrink: 0;
 
       .material-symbols-outlined {
         font-size: 16px;

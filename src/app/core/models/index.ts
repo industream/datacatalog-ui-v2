@@ -195,7 +195,7 @@ export interface AssetNodeMoveRequest {
   newOrder: number;
 }
 
-// Asset Dictionary Template - predefined hierarchy structures
+// Asset Dictionary Template - predefined hierarchy structures (UI-only)
 export interface AssetDictionaryTemplate {
   id: string;
   name: string;

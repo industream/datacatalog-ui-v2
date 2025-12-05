@@ -33,6 +33,10 @@ import { EntryItemComponent, EntryDragEvent } from '../entry-item/entry-item.com
     </div>
   `,
   styles: [`
+    :host {
+      flex-shrink: 0;
+    }
+
     .assigned-section {
       margin-bottom: var(--dc-space-lg);
       padding-bottom: var(--dc-space-lg);

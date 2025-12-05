@@ -76,6 +76,13 @@ export interface EntriesPanelSelectEvent {
     </div>
   `,
   styles: [`
+    :host {
+      display: block;
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+    }
+
     .tags-panel {
       display: flex;
       flex-direction: column;
@@ -83,6 +90,7 @@ export interface EntriesPanelSelectEvent {
       border-radius: var(--dc-radius-lg);
       overflow: hidden;
       height: 100%;
+      width: 100%;
     }
 
     .panel-header {
@@ -130,6 +138,10 @@ export interface EntriesPanelSelectEvent {
     .tags-container {
       flex: 1;
       overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
       padding: var(--dc-space-md);
     }
   `]
