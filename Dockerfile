@@ -9,6 +9,10 @@ COPY ./package.json /tmp/build/app/
 
 WORKDIR /tmp/build/app/
 
+# Configure GitHub Packages registry for @industream scope
+RUN --mount=type=secret,id=GITHUB_PACKAGES_TOKEN,env=GITHUB_PACKAGES_TOKEN \
+    echo -e "//npm.pkg.github.com/:_authToken=$GITHUB_PACKAGES_TOKEN\n@industream:registry=https://npm.pkg.github.com" > .npmrc
+
 RUN npm install --legacy-peer-deps
 
 COPY ./ /tmp/build/app/
