@@ -115,10 +115,11 @@ export interface DashboardStats {
 // Asset Node - represents a node in the asset hierarchy tree
 export interface AssetNode {
   id: string;
+  dictionaryId: string;
   name: string;
   description?: string;
   icon?: string;
-  parentId: string | null;
+  parentId?: string | null;
   order: number;
   // Assigned catalog entry IDs (tags)
   entryIds: string[];
@@ -186,6 +187,12 @@ export interface AssetNodeAssignEntriesRequest {
   nodeId: string;
   dictionaryId: string;
   entryIds: string[];
+}
+
+// Move a node request
+export interface AssetNodeMoveRequest {
+  newParentId: string | null;
+  newOrder: number;
 }
 
 // Asset Dictionary Template - predefined hierarchy structures

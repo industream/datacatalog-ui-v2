@@ -80,8 +80,8 @@ interface StatCard {
               } @else {
                 @for (source of store.sourceConnections().slice(0, 5); track source.id) {
                   <div class="source-item">
-                    <span class="source-type-badge" [style.background]="getSourceColor(source.sourceType?.name)">
-                      {{ source.sourceType?.name || 'Unknown' }}
+                    <span class="source-type-badge" [style.background]="getSourceColor(source.sourceType.name)">
+                      {{ source.sourceType.name || 'Unknown' }}
                     </span>
                     <span class="source-name">{{ source.name }}</span>
                   </div>

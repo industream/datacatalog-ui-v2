@@ -67,8 +67,8 @@ import { SourceConnection, SourceType } from '../../core/models';
           @for (connection of filteredConnections(); track connection.id) {
             <div class="connection-card">
               <div class="card-header">
-                <span class="source-type-badge" [style.background]="getSourceColor(connection.sourceType?.name)">
-                  {{ connection.sourceType?.name || 'Unknown' }}
+                <span class="source-type-badge" [style.background]="getSourceColor(connection.sourceType.name)">
+                  {{ connection.sourceType.name || 'Unknown' }}
                 </span>
                 <div class="card-actions">
                   <button class="icon-btn" title="Edit" (click)="onEditConnection(connection)">

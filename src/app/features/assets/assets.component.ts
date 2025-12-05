@@ -4,12 +4,14 @@ import { Router } from '@angular/router';
 import '@carbon/web-components/es/components/button/index.js';
 
 import { AssetDictionary, AssetDictionaryTemplate } from '../../core/models';
+import { ConfirmationService } from '../../core/services';
 import { AssetDictionaryStore } from './asset-dictionary.store';
 
 @Component({
   selector: 'app-assets',
   standalone: true,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
+  styleUrls: ['./assets.component.scss'],
   template: `
     <div class="assets-container">
       <header class="page-header">
@@ -173,395 +175,12 @@ import { AssetDictionaryStore } from './asset-dictionary.store';
         </div>
       }
     </div>
-  `,
-  styles: [`
-    .assets-container {
-      padding: calc(var(--dc-card-padding) * 2);
-      max-width: 1400px;
-      margin: 0 auto;
-    }
-
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: var(--dc-header-gap);
-
-      h1 {
-        margin: 0 0 var(--dc-space-xs);
-        font-weight: 600;
-      }
-
-      .subtitle {
-        margin: 0;
-        color: var(--dc-text-secondary);
-      }
-    }
-
-    .loading-state,
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: var(--dc-space-2xl);
-      text-align: center;
-      background: var(--dc-bg-secondary);
-      border: 2px dashed var(--dc-border-subtle);
-      border-radius: var(--dc-radius-md);
-      min-height: 400px;
-
-      .material-symbols-outlined {
-        font-size: 64px;
-        color: var(--dc-text-secondary);
-        margin-bottom: var(--dc-space-lg);
-      }
-
-      h2 {
-        margin: 0 0 var(--dc-space-sm);
-      }
-
-      p {
-        margin: 0 0 var(--dc-space-lg);
-        color: var(--dc-text-secondary);
-        max-width: 400px;
-      }
-    }
-
-    .dictionaries-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: var(--dc-grid-gap);
-    }
-
-    .dictionary-card {
-      background: var(--dc-bg-secondary);
-      border: 1px solid var(--dc-border-subtle);
-      border-radius: var(--dc-radius-md);
-      padding: var(--dc-card-padding);
-      cursor: pointer;
-      transition: all var(--dc-duration-fast);
-
-      &:hover {
-        border-color: var(--dc-primary);
-        box-shadow: var(--dc-shadow-md);
-        transform: translateY(-2px);
-      }
-
-      .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: var(--dc-space-md);
-      }
-
-      .card-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: var(--dc-radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-
-        .material-symbols-outlined {
-          font-size: 28px;
-        }
-      }
-
-      .card-actions {
-        display: flex;
-        gap: var(--dc-space-xs);
-        opacity: 0;
-        transition: opacity var(--dc-duration-fast);
-      }
-
-      &:hover .card-actions {
-        opacity: 1;
-      }
-
-      .card-title {
-        margin: 0 0 var(--dc-space-xs);
-        font-size: 1.125rem;
-        font-weight: 600;
-      }
-
-      .card-description {
-        margin: 0 0 var(--dc-space-md);
-        color: var(--dc-text-secondary);
-        font-size: var(--dc-text-size-sm);
-        line-height: 1.5;
-        display: -webkit-box;
-        -webkit-line-clamp: 2;
-        -webkit-box-orient: vertical;
-        overflow: hidden;
-      }
-
-      .card-stats {
-        display: flex;
-        gap: var(--dc-space-lg);
-        margin-bottom: var(--dc-space-md);
-
-        .stat {
-          display: flex;
-          align-items: center;
-          gap: var(--dc-space-xs);
-          color: var(--dc-text-secondary);
-          font-size: var(--dc-text-size-sm);
-
-          .material-symbols-outlined {
-            font-size: 16px;
-          }
-        }
-      }
-
-      .card-footer {
-        padding-top: var(--dc-space-sm);
-        border-top: 1px solid var(--dc-border-subtle);
-
-        .updated {
-          font-size: var(--dc-text-size-sm);
-          color: var(--dc-text-placeholder);
-        }
-      }
-    }
-
-    .icon-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 28px;
-      height: 28px;
-      border: none;
-      background: transparent;
-      color: var(--dc-text-secondary);
-      cursor: pointer;
-      border-radius: var(--dc-radius-sm);
-      transition: all var(--dc-duration-fast);
-
-      &:hover {
-        background: var(--dc-bg-tertiary);
-        color: var(--dc-text-primary);
-      }
-
-      &.danger:hover {
-        background: color-mix(in srgb, var(--dc-error) 15%, transparent);
-        color: var(--dc-error);
-      }
-
-      .material-symbols-outlined {
-        font-size: 18px;
-      }
-    }
-
-    /* Modal styles */
-    .modal-backdrop {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      padding: var(--dc-space-xl);
-    }
-
-    .modal-content {
-      background: var(--dc-bg-secondary);
-      border: 1px solid var(--dc-border-subtle);
-      border-radius: var(--dc-radius-lg);
-      width: 100%;
-      max-width: 600px;
-      max-height: 90vh;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      box-shadow: var(--dc-shadow-xl);
-    }
-
-    .modal-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: var(--dc-space-lg);
-      border-bottom: 1px solid var(--dc-border-subtle);
-
-      h2 {
-        margin: 0;
-        font-size: 1.25rem;
-        font-weight: 600;
-      }
-    }
-
-    .modal-body {
-      padding: var(--dc-space-lg);
-      overflow-y: auto;
-      flex: 1;
-    }
-
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: var(--dc-space-sm);
-      padding: var(--dc-space-lg);
-      border-top: 1px solid var(--dc-border-subtle);
-    }
-
-    .form-group {
-      margin-bottom: var(--dc-space-lg);
-
-      label {
-        display: block;
-        margin-bottom: var(--dc-space-xs);
-        font-weight: 500;
-        font-size: 0.875rem;
-      }
-    }
-
-    .form-row {
-      display: flex;
-      gap: var(--dc-space-lg);
-
-      .form-group {
-        flex: 1;
-      }
-    }
-
-    .form-input,
-    .form-textarea {
-      width: 100%;
-      padding: 10px 12px;
-      background: var(--dc-bg-tertiary);
-      border: 1px solid var(--dc-border-subtle);
-      border-radius: var(--dc-radius-sm);
-      color: var(--dc-text-primary);
-      font-size: 0.875rem;
-
-      &:focus {
-        outline: none;
-        border-color: var(--dc-primary);
-      }
-
-      &::placeholder {
-        color: var(--dc-text-placeholder);
-      }
-    }
-
-    .form-textarea {
-      resize: vertical;
-      min-height: 80px;
-    }
-
-    .icon-selector {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--dc-space-xs);
-    }
-
-    .icon-option {
-      width: 40px;
-      height: 40px;
-      border: 1px solid var(--dc-border-subtle);
-      background: var(--dc-bg-tertiary);
-      border-radius: var(--dc-radius-sm);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--dc-text-secondary);
-      transition: all var(--dc-duration-fast);
-
-      &:hover {
-        border-color: var(--dc-primary);
-        color: var(--dc-text-primary);
-      }
-
-      &.selected {
-        border-color: var(--dc-primary);
-        background: var(--dc-primary);
-        color: white;
-      }
-
-      .material-symbols-outlined {
-        font-size: 20px;
-      }
-    }
-
-    .color-selector {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--dc-space-xs);
-    }
-
-    .color-option {
-      width: 32px;
-      height: 32px;
-      border: 2px solid transparent;
-      border-radius: var(--dc-radius-sm);
-      cursor: pointer;
-      transition: all var(--dc-duration-fast);
-
-      &:hover {
-        transform: scale(1.1);
-      }
-
-      &.selected {
-        border-color: var(--dc-text-primary);
-        box-shadow: 0 0 0 2px var(--dc-bg-secondary);
-      }
-    }
-
-    .templates-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-      gap: var(--dc-space-sm);
-    }
-
-    .template-option {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--dc-space-xs);
-      padding: var(--dc-space-md);
-      background: var(--dc-bg-tertiary);
-      border: 1px solid var(--dc-border-subtle);
-      border-radius: var(--dc-radius-sm);
-      cursor: pointer;
-      text-align: center;
-      transition: all var(--dc-duration-fast);
-
-      &:hover {
-        border-color: var(--dc-primary);
-      }
-
-      &.selected {
-        border-color: var(--dc-primary);
-        background: color-mix(in srgb, var(--dc-primary) 10%, transparent);
-      }
-
-      .material-symbols-outlined {
-        font-size: 24px;
-        color: var(--dc-text-secondary);
-      }
-
-      .template-name {
-        font-weight: 500;
-        font-size: 0.875rem;
-      }
-
-      .template-desc {
-        font-size: 0.75rem;
-        color: var(--dc-text-secondary);
-      }
-    }
-  `]
+  `
 })
 export class AssetsComponent implements OnInit {
   readonly store = inject(AssetDictionaryStore);
   private readonly router = inject(Router);
+  private readonly confirmationService = inject(ConfirmationService);
 
   readonly showCreateModal = signal(false);
   readonly editingDict = signal<AssetDictionary | null>(null);
@@ -686,8 +305,15 @@ export class AssetsComponent implements OnInit {
     this.showCreateModal.set(true);
   }
 
-  deleteDictionary(dict: AssetDictionary): void {
-    if (confirm(`Delete "${dict.name}"? This will remove all nodes and tag assignments.`)) {
+  async deleteDictionary(dict: AssetDictionary): Promise<void> {
+    const confirmed = await this.confirmationService.confirm({
+      title: 'Delete Dictionary',
+      message: `Delete "${dict.name}"? This will remove all nodes and tag assignments.`,
+      confirmText: 'Delete',
+      danger: true
+    });
+
+    if (confirmed) {
       this.store.deleteDictionary(dict.id);
     }
   }
