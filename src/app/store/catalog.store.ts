@@ -1,15 +1,16 @@
 import { Injectable, inject, signal, computed, OnDestroy } from '@angular/core';
 import { catchError, of, forkJoin } from 'rxjs';
 import { ApiService, PollingService } from '../core/services';
+import { EntryStore } from './entry.store';
+import { ConnectionStore } from './connection.store';
+import { LabelStore } from './label.store';
+import { SourceTypeStore } from './source-type.store';
 import {
-  CatalogEntry,
-  SourceConnection,
-  Label,
-  SourceType,
   CatalogEntryCreateRequest,
   CatalogEntryAmendRequest,
   SourceConnectionCreateRequest,
   SourceConnectionAmendRequest,
+  Label,
   ConflictStrategy
 } from '../core/models';
 
@@ -27,27 +28,37 @@ const SOURCE_TYPE_COLORS: Record<string, string> = {
   'Leneda': 'var(--dc-source-leneda)'
 };
 
+/**
+ * Facade store that composes specialized stores for backward compatibility.
+ * New code should prefer injecting specialized stores directly.
+ */
 @Injectable({ providedIn: 'root' })
 export class CatalogStore implements OnDestroy {
   private readonly api = inject(ApiService);
   private readonly polling = inject(PollingService);
   private readonly POLLING_KEY = 'catalog-store';
 
-  // State signals
-  readonly entries = signal<CatalogEntry[]>([]);
-  readonly sourceConnections = signal<SourceConnection[]>([]);
-  readonly labels = signal<Label[]>([]);
-  readonly sourceTypes = signal<SourceType[]>([]);
+  // Composed stores
+  private readonly entryStore = inject(EntryStore);
+  private readonly connectionStore = inject(ConnectionStore);
+  private readonly labelStore = inject(LabelStore);
+  private readonly sourceTypeStore = inject(SourceTypeStore);
 
-  // Loading states
+  // Expose state from composed stores (backward compatibility)
+  readonly entries = this.entryStore.entries;
+  readonly sourceConnections = this.connectionStore.connections;
+  readonly labels = this.labelStore.labels;
+  readonly sourceTypes = this.sourceTypeStore.sourceTypes;
+
+  // Loading states - aggregate from all stores
   readonly loading = signal(false);
   readonly error = signal<string | null>(null);
 
   // Computed values for dashboard
-  readonly totalEntries = computed(() => this.entries().length);
-  readonly totalSources = computed(() => this.sourceConnections().length);
-  readonly totalLabels = computed(() => this.labels().length);
-  readonly totalSourceTypes = computed(() => this.sourceTypes().length);
+  readonly totalEntries = this.entryStore.total;
+  readonly totalSources = this.connectionStore.total;
+  readonly totalLabels = this.labelStore.total;
+  readonly totalSourceTypes = this.sourceTypeStore.total;
 
   readonly entriesBySourceType = computed(() => {
     const entries = this.entries();
@@ -71,7 +82,6 @@ export class CatalogStore implements OnDestroy {
   });
 
   constructor() {
-    // Register for polling
     this.polling.register(this.POLLING_KEY, () => this.refreshSilently());
   }
 
@@ -91,21 +101,20 @@ export class CatalogStore implements OnDestroy {
       types: this.api.getSourceTypes().pipe(catchError(() => of([])))
     }).subscribe({
       next: ({ entries, connections, labels, types }) => {
-        this.entries.set(entries);
-        this.sourceConnections.set(connections);
-        this.labels.set(labels);
-        this.sourceTypes.set(types);
+        this.entryStore.setEntries(entries);
+        this.connectionStore.setConnections(connections);
+        this.labelStore.setLabels(labels);
+        this.sourceTypeStore.setSourceTypes(types);
         this.loading.set(false);
       },
-      error: (err) => {
+      error: () => {
         this.error.set('Failed to load data');
         this.loading.set(false);
-        console.error('Store load error:', err);
       }
     });
   }
 
-  // Silent refresh (no loading indicator) for polling
+  // Silent refresh for polling
   private refreshSilently(): void {
     forkJoin({
       entries: this.api.getCatalogEntries().pipe(catchError(() => of(this.entries()))),
@@ -114,181 +123,64 @@ export class CatalogStore implements OnDestroy {
       types: this.api.getSourceTypes().pipe(catchError(() => of(this.sourceTypes())))
     }).subscribe({
       next: ({ entries, connections, labels, types }) => {
-        this.entries.set(entries);
-        this.sourceConnections.set(connections);
-        this.labels.set(labels);
-        this.sourceTypes.set(types);
+        this.entryStore.setEntries(entries);
+        this.connectionStore.setConnections(connections);
+        this.labelStore.setLabels(labels);
+        this.sourceTypeStore.setSourceTypes(types);
       }
     });
   }
 
-  // ============ Catalog Entries ============
+  // ============ Catalog Entries (delegate to EntryStore) ============
   loadEntries(): void {
-    this.loading.set(true);
-    this.api.getCatalogEntries().subscribe({
-      next: (entries) => {
-        this.entries.set(entries);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to load entries');
-        this.loading.set(false);
-      }
-    });
+    this.entryStore.load();
   }
 
   createEntry(entry: CatalogEntryCreateRequest): void {
-    this.loading.set(true);
-    this.api.createCatalogEntries([entry]).subscribe({
-      next: (created) => {
-        this.entries.update(entries => [...entries, ...created]);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to create entry');
-        this.loading.set(false);
-      }
-    });
+    this.entryStore.create(entry);
   }
 
   updateEntry(entry: CatalogEntryAmendRequest): void {
-    this.loading.set(true);
-    this.api.updateCatalogEntries([entry]).subscribe({
-      next: (updated) => {
-        this.entries.update(entries =>
-          entries.map(e => e.id === entry.id ? { ...e, ...updated[0] } : e)
-        );
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to update entry');
-        this.loading.set(false);
-      }
-    });
+    this.entryStore.update(entry);
   }
 
   deleteEntries(ids: string[]): void {
-    this.loading.set(true);
-    this.api.deleteCatalogEntries(ids).subscribe({
-      next: () => {
-        this.entries.update(entries => entries.filter(e => !ids.includes(e.id)));
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to delete entries');
-        this.loading.set(false);
-      }
-    });
+    this.entryStore.delete(ids);
   }
 
-  // ============ Source Connections ============
+  // ============ Source Connections (delegate to ConnectionStore) ============
   loadSourceConnections(): void {
-    this.loading.set(true);
-    this.api.getSourceConnections().subscribe({
-      next: (connections) => {
-        this.sourceConnections.set(connections);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to load source connections');
-        this.loading.set(false);
-      }
-    });
+    this.connectionStore.load();
   }
 
   createSourceConnection(connection: SourceConnectionCreateRequest): void {
-    this.loading.set(true);
-    this.api.createSourceConnections([connection]).subscribe({
-      next: (created) => {
-        this.sourceConnections.update(conns => [...conns, ...created]);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to create source connection');
-        this.loading.set(false);
-      }
-    });
+    this.connectionStore.create(connection);
   }
 
   updateSourceConnection(connection: SourceConnectionAmendRequest): void {
-    this.loading.set(true);
-    this.api.updateSourceConnections([connection]).subscribe({
-      next: (updated) => {
-        this.sourceConnections.update(conns =>
-          conns.map(c => c.id === connection.id ? { ...c, ...updated[0] } : c)
-        );
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to update source connection');
-        this.loading.set(false);
-      }
-    });
+    this.connectionStore.update(connection);
   }
 
   deleteSourceConnections(ids: string[]): void {
-    this.loading.set(true);
-    this.api.deleteSourceConnections(ids).subscribe({
-      next: () => {
-        this.sourceConnections.update(conns => conns.filter(c => !ids.includes(c.id)));
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to delete source connections');
-        this.loading.set(false);
-      }
-    });
+    this.connectionStore.delete(ids);
   }
 
-  // ============ Labels ============
+  // ============ Labels (delegate to LabelStore) ============
   loadLabels(): void {
-    this.loading.set(true);
-    this.api.getLabels().subscribe({
-      next: (labels) => {
-        this.labels.set(labels);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to load labels');
-        this.loading.set(false);
-      }
-    });
+    this.labelStore.load();
   }
 
   createLabel(label: Omit<Label, 'id'>): void {
-    this.loading.set(true);
-    this.api.createLabels([label as Label]).subscribe({
-      next: (created) => {
-        this.labels.update(labels => [...labels, ...created]);
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to create label');
-        this.loading.set(false);
-      }
-    });
+    this.labelStore.create(label);
   }
 
   deleteLabels(ids: string[]): void {
-    this.loading.set(true);
-    this.api.deleteLabels(ids).subscribe({
-      next: () => {
-        this.labels.update(labels => labels.filter(l => !ids.includes(l.id)));
-        this.loading.set(false);
-      },
-      error: (err) => {
-        this.error.set('Failed to delete labels');
-        this.loading.set(false);
-      }
-    });
+    this.labelStore.delete(ids);
   }
 
-  // ============ Source Types ============
+  // ============ Source Types (delegate to SourceTypeStore) ============
   loadSourceTypes(): void {
-    this.api.getSourceTypes().subscribe({
-      next: (types) => this.sourceTypes.set(types),
-      error: (err) => console.error('Failed to load source types:', err)
-    });
+    this.sourceTypeStore.load();
   }
 
   // ============ Import/Export ============
@@ -299,7 +191,6 @@ export class CatalogStore implements OnDestroy {
     return new Promise((resolve) => {
       this.api.importCatalogEntries(file, conflictStrategy).subscribe({
         next: () => {
-          // Reload all data after import
           this.loadAll();
           resolve({ success: true });
         },
@@ -323,9 +214,8 @@ export class CatalogStore implements OnDestroy {
         link.click();
         window.URL.revokeObjectURL(url);
       },
-      error: (err) => {
+      error: () => {
         this.error.set('Failed to export catalog');
-        console.error('Export error:', err);
       }
     });
   }
