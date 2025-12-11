@@ -6,7 +6,7 @@ import '@carbon/web-components/es/components/button/index.js';
 import '@carbon/web-components/es/components/tile/index.js';
 
 import { CatalogStore } from '../../store';
-import { ConflictStrategy } from '../../core/models';
+import { ConflictStrategy } from '@industream/datacatalog-client/dto';
 
 interface StatCard {
   label: string;
@@ -122,8 +122,8 @@ interface StatCard {
 
       <!-- Import Modal -->
       @if (showImportModal()) {
-        <div class="modal-backdrop" (click)="closeImportModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-backdrop">
+          <div class="modal-content">
             <div class="modal-header">
               <h2>Import CSV</h2>
               <button class="icon-btn" (click)="closeImportModal()">

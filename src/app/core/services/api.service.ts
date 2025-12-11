@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map, tap } from 'rxjs';
-import {
+import type {
   ItemCollection,
   CatalogEntry,
   CatalogEntryCreateRequest,
@@ -11,7 +11,9 @@ import {
   SourceConnectionAmendRequest,
   Label,
   SourceType,
-  ApiInfo,
+  SourceTypeCreateRequest,
+  SourceTypeReplaceRequest,
+  Info as ApiInfo,
   ConflictStrategy,
   AssetDictionary,
   AssetDictionaryCreateRequest,
@@ -20,7 +22,7 @@ import {
   AssetNodeCreateRequest,
   AssetNodeAmendRequest,
   AssetNodeMoveRequest
-} from '../models';
+} from '@industream/datacatalog-client/dto';
 import { ConfigService } from './config.service';
 
 @Injectable({ providedIn: 'root' })
@@ -67,7 +69,7 @@ export class ApiService {
   }
 
   updateCatalogEntries(entries: CatalogEntryAmendRequest[]): Observable<CatalogEntry[]> {
-    return this.http.patch<ItemCollection<CatalogEntry>>(`${this.baseUrl}/catalog-entries/`, { items: entries })
+    return this.http.put<ItemCollection<CatalogEntry>>(`${this.baseUrl}/catalog-entries/`, { items: entries })
       .pipe(map(res => res.items));
   }
 
@@ -117,7 +119,7 @@ export class ApiService {
   }
 
   updateSourceConnections(connections: SourceConnectionAmendRequest[]): Observable<SourceConnection[]> {
-    return this.http.patch<ItemCollection<SourceConnection>>(`${this.baseUrl}/source-connections/`, { items: connections })
+    return this.http.put<ItemCollection<SourceConnection>>(`${this.baseUrl}/source-connections/`, { items: connections })
       .pipe(map(res => res.items));
   }
 
@@ -170,6 +172,22 @@ export class ApiService {
       .pipe(map(res => res.items));
   }
 
+  createSourceTypes(sourceTypes: SourceTypeCreateRequest[]): Observable<SourceType[]> {
+    return this.http.post<ItemCollection<SourceType>>(`${this.baseUrl}/source-types/`, { items: sourceTypes })
+      .pipe(map(res => res.items));
+  }
+
+  updateSourceTypes(sourceTypes: SourceTypeReplaceRequest[]): Observable<SourceType[]> {
+    return this.http.put<ItemCollection<SourceType>>(`${this.baseUrl}/source-types/`, { items: sourceTypes })
+      .pipe(map(res => res.items));
+  }
+
+  deleteSourceTypes(ids: string[]): Observable<void> {
+    let params = new HttpParams();
+    ids.forEach(id => params = params.append('ids', id));
+    return this.http.delete<void>(`${this.baseUrl}/source-types/`, { params });
+  }
+
   // ============ Asset Dictionaries ============
   getAssetDictionaries(filters?: {
     ids?: string[];
@@ -219,7 +237,7 @@ export class ApiService {
   }
 
   updateAssetDictionary(request: AssetDictionaryAmendRequest): Observable<AssetDictionary> {
-    return this.http.patch<AssetDictionary>(`${this.baseUrl}/asset-dictionaries/`, request);
+    return this.http.put<AssetDictionary>(`${this.baseUrl}/asset-dictionaries/`, request);
   }
 
   deleteAssetDictionaries(ids: string[]): Observable<void> {
@@ -243,7 +261,7 @@ export class ApiService {
   }
 
   updateAssetNode(dictionaryId: string, request: Omit<AssetNodeAmendRequest, 'dictionaryId'>): Observable<AssetNode> {
-    return this.http.patch<AssetNode>(`${this.baseUrl}/asset-dictionaries/${dictionaryId}/nodes`, request);
+    return this.http.put<AssetNode>(`${this.baseUrl}/asset-dictionaries/${dictionaryId}/nodes`, request);
   }
 
   moveAssetNode(dictionaryId: string, nodeId: string, request: AssetNodeMoveRequest): Observable<void> {

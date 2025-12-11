@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CatalogEntry, Label } from '../../../../core/models';
+import type { CatalogEntry, Label } from '@industream/datacatalog-client/dto';
 import { LabelFilterComponent } from '../label-filter/label-filter.component';
 import { AssignedEntriesComponent } from '../assigned-entries/assigned-entries.component';
 import { AvailableEntriesComponent, AvailableEntrySelectEvent } from '../available-entries/available-entries.component';

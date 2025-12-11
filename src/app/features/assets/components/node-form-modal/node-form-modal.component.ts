@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, signal, computed, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AssetNode } from '../../../../core/models';
+import type { AssetNode } from '../../../../store/asset-dictionary.store';
 
 import '@carbon/web-components/es/components/button/index.js';
 
@@ -27,8 +27,8 @@ interface ValidationErrors {
   imports: [CommonModule],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
-    <div class="modal-backdrop" (click)="onClose()">
-      <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop">
+      <div class="modal-content modal-sm">
         <div class="modal-header">
           <h2>{{ editingNode ? 'Edit Node' : 'New Node' }}</h2>
           <button class="icon-btn" (click)="onClose()">

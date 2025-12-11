@@ -3,8 +3,7 @@ import { provideRouter } from '@angular/router';
 import { provideHttpClient, withFetch } from '@angular/common/http';
 
 import { routes } from './app.routes';
-import { environment } from '../environments/environment';
-import { ApiService, MockApiService, ConfigService } from './core/services';
+import { ConfigService } from './core/services';
 
 function initializeApp(configService: ConfigService) {
   return () => configService.loadConfig();
@@ -21,9 +20,6 @@ export const appConfig: ApplicationConfig = {
       useFactory: initializeApp,
       deps: [ConfigService],
       multi: true
-    },
-    environment.useMockApi
-      ? { provide: ApiService, useClass: MockApiService }
-      : []
+    }
   ]
 };

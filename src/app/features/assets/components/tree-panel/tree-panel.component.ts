@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AssetNode } from '../../../../core/models';
+import type { AssetNode } from '../../../../store/asset-dictionary.store';
 import { TreeNodeComponent, TreeNodeAction, TreeNodeDragEvent } from '../tree-node/tree-node.component';
 import { SkeletonComponent } from '../../../../shared/components';
 

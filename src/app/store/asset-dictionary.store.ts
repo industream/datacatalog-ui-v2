@@ -1,16 +1,45 @@
 import { Injectable, signal, computed, inject, OnDestroy } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
-import {
+import type {
   AssetDictionary,
-  AssetNode,
   AssetDictionaryCreateRequest,
   AssetDictionaryAmendRequest,
-  AssetNodeCreateRequest,
-  AssetNodeAmendRequest,
-  AssetDictionaryTemplate,
-  AssetTemplateNode
-} from '../../core/models';
-import { ApiService, PollingService, ToastService, ConfigService } from '../../core/services';
+  AssetNode as ClientAssetNode,
+  AssetNodeCreateRequest as ClientAssetNodeCreateRequest,
+  AssetNodeAmendRequest as ClientAssetNodeAmendRequest
+} from '@industream/datacatalog-client/dto';
+import { ApiService, PollingService, ToastService, ConfigService } from '../core/services';
+
+// UI-only types for template functionality
+export interface AssetTemplateNode {
+  name: string;
+  icon?: string;
+  description?: string;
+  children?: AssetTemplateNode[];
+}
+
+export interface AssetDictionaryTemplate {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  structure: AssetTemplateNode[];
+}
+
+// Extended types that include dictionaryId for internal use
+export interface AssetNodeCreateRequest extends ClientAssetNodeCreateRequest {
+  dictionaryId: string;
+}
+
+export interface AssetNodeAmendRequest extends ClientAssetNodeAmendRequest {
+  dictionaryId: string;
+}
+
+// Extended AssetNode type to support UI features like expanded state
+export type AssetNode = ClientAssetNode & {
+  expanded?: boolean;
+  children?: AssetNode[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class AssetDictionaryStore implements OnDestroy {
@@ -378,13 +407,13 @@ export class AssetDictionaryStore implements OnDestroy {
     await this.executeWithErrorHandling(
       async () => {
         await firstValueFrom(
-          this.api.moveAssetNode(dictionaryId, nodeId, { newParentId, newOrder })
+          this.api.moveAssetNode(dictionaryId, nodeId, { newParentId: newParentId ?? undefined, newOrder })
         );
 
         this.updateNodeInDictionary(dictionaryId, nodes =>
           nodes.map(node => {
             if (node.id !== nodeId) return node;
-            return { ...node, parentId: newParentId, order: newOrder };
+            return { ...node, parentId: newParentId ?? undefined, order: newOrder };
           })
         );
       },
@@ -446,7 +475,7 @@ export class AssetDictionaryStore implements OnDestroy {
           name: templateNode.name,
           description: templateNode.description,
           icon: templateNode.icon,
-          parentId,
+          parentId: parentId ?? undefined,
           order: index
         })
       );

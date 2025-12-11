@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CatalogEntry } from '../../../../core/models';
+import type { CatalogEntry } from '@industream/datacatalog-client/dto';
 import { EntryItemComponent, EntryDragEvent } from '../entry-item/entry-item.component';
 
 @Component({

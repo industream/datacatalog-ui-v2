@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { Label } from '../models';
+import type { Label } from '@industream/datacatalog-client/dto';
 
 @Injectable({ providedIn: 'root' })
 export class LabelColorService {

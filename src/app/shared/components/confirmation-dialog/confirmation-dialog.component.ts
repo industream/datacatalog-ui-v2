@@ -11,8 +11,8 @@ import '@carbon/web-components/es/components/button/index.js';
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     @if (confirmationService.state().isOpen) {
-      <div class="modal-backdrop" (click)="onCancel()">
-        <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-backdrop">
+        <div class="modal-content">
           <div class="modal-header">
             <h2>{{ confirmationService.state().options?.title }}</h2>
             <button class="icon-btn" (click)="onCancel()">

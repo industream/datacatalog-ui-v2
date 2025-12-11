@@ -5,14 +5,14 @@ import { EntryStore } from './entry.store';
 import { ConnectionStore } from './connection.store';
 import { LabelStore } from './label.store';
 import { SourceTypeStore } from './source-type.store';
-import {
+import type {
   CatalogEntryCreateRequest,
   CatalogEntryAmendRequest,
   SourceConnectionCreateRequest,
   SourceConnectionAmendRequest,
-  Label,
-  ConflictStrategy
-} from '../core/models';
+  Label
+} from '@industream/datacatalog-client/dto';
+import { ConflictStrategy } from '@industream/datacatalog-client/dto';
 
 // Source type colors mapping
 const SOURCE_TYPE_COLORS: Record<string, string> = {
@@ -181,6 +181,18 @@ export class CatalogStore implements OnDestroy {
   // ============ Source Types (delegate to SourceTypeStore) ============
   loadSourceTypes(): void {
     this.sourceTypeStore.load();
+  }
+
+  createSourceType(sourceType: { name: string }): void {
+    this.sourceTypeStore.create(sourceType);
+  }
+
+  updateSourceType(sourceType: { id: string; name: string }): void {
+    this.sourceTypeStore.update(sourceType);
+  }
+
+  deleteSourceTypes(ids: string[]): void {
+    this.sourceTypeStore.delete(ids);
   }
 
   // ============ Import/Export ============

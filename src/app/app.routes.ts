@@ -13,10 +13,10 @@ export const routes: Routes = [
     title: 'Dashboard - DataCatalog'
   },
   {
-    path: 'explorer',
-    loadComponent: () => import('./features/explorer/explorer.component')
-      .then(m => m.ExplorerComponent),
-    title: 'Explorer - DataCatalog'
+    path: 'catalog-entries',
+    loadComponent: () => import('./features/catalog-entries/catalog-entries.component')
+      .then(m => m.CatalogEntriesComponent),
+    title: 'Catalog Entries - DataCatalog'
   },
   {
     path: 'asset-dictionaries',
@@ -31,10 +31,10 @@ export const routes: Routes = [
     title: 'Asset Editor - DataCatalog'
   },
   {
-    path: 'sources',
+    path: 'source-connections',
     loadComponent: () => import('./features/sources/sources.component')
       .then(m => m.SourcesComponent),
-    title: 'Sources - DataCatalog'
+    title: 'Source Connection - DataCatalog'
   },
   {
     path: 'labels',

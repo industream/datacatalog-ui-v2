@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AssetDictionary } from '../../../../core/models';
+import type { AssetDictionary } from '@industream/datacatalog-client/dto';
 
 import '@carbon/web-components/es/components/button/index.js';
 

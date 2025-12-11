@@ -3,7 +3,7 @@ import { Component, CUSTOM_ELEMENTS_SCHEMA, inject, OnInit, signal, computed } f
 import '@carbon/web-components/es/components/button/index.js';
 
 import { CatalogStore } from '../../store';
-import { Label } from '../../core/models';
+import type { Label } from '@industream/datacatalog-client/dto';
 
 // Color palette for labels (distinct, visible colors)
 const LABEL_COLORS = [
@@ -149,8 +149,8 @@ export function getLabelColor(labelName: string): string {
 
       <!-- Create Modal -->
       @if (showCreateModal()) {
-        <div class="modal-backdrop" (click)="closeCreateModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-backdrop">
+          <div class="modal-content">
             <div class="modal-header">
               <h2>New Label</h2>
               <button class="icon-btn" (click)="closeCreateModal()">

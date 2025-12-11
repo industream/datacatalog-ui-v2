@@ -2,7 +2,7 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { catchError, of } from 'rxjs';
 import { ApiService } from '../core/services';
 import { BaseStore } from './base.store';
-import { Label } from '../core/models';
+import type { Label } from '@industream/datacatalog-client/dto';
 
 @Injectable({ providedIn: 'root' })
 export class LabelStore extends BaseStore {

@@ -2,11 +2,11 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { catchError, of } from 'rxjs';
 import { ApiService } from '../core/services';
 import { BaseStore } from './base.store';
-import {
+import type {
   CatalogEntry,
   CatalogEntryCreateRequest,
   CatalogEntryAmendRequest
-} from '../core/models';
+} from '@industream/datacatalog-client/dto';
 
 @Injectable({ providedIn: 'root' })
 export class EntryStore extends BaseStore {

@@ -8,7 +8,8 @@ import '@carbon/web-components/es/components/checkbox/index.js';
 import '@carbon/web-components/es/components/overflow-menu/index.js';
 
 import { CatalogStore } from '../../store';
-import { CatalogEntry, DataType } from '../../core/models';
+import type { CatalogEntry } from '@industream/datacatalog-client/dto';
+import { DataType } from '@industream/datacatalog-client/dto';
 import { getLabelColor } from '../labels/labels.component';
 
 type ViewMode = 'table' | 'grid' | 'list';
@@ -25,13 +26,13 @@ interface EntryFormData {
 }
 
 @Component({
-  selector: 'app-explorer',
+  selector: 'app-catalog-entries',
   standalone: true,
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
-    <div class="explorer-container">
-      <header class="explorer-header">
-        <h1>Explorer</h1>
+    <div class="catalog-entries-container">
+      <header class="catalog-entries-header">
+        <h1>Catalog Entries</h1>
         <p class="subtitle">Browse and manage your catalog entries</p>
       </header>
 
@@ -411,8 +412,8 @@ interface EntryFormData {
 
       <!-- Entry Edit/Create Modal -->
       @if (showModal()) {
-        <div class="modal-backdrop" (click)="closeModal()">
-          <div class="modal-content modal-lg" (click)="$event.stopPropagation()">
+        <div class="modal-backdrop">
+          <div class="modal-content modal-lg">
             <div class="modal-header">
               <h2>{{ editingEntry() ? 'Edit Entry' : 'New Entry' }}</h2>
               <button class="icon-btn" (click)="closeModal()">
@@ -491,13 +492,13 @@ interface EntryFormData {
     </div>
   `,
   styles: [`
-    .explorer-container {
+    .catalog-entries-container {
       padding: calc(var(--dc-card-padding) * 2);
       max-width: 1600px;
       margin: 0 auto;
     }
 
-    .explorer-header {
+    .catalog-entries-header {
       margin-bottom: var(--dc-header-gap);
 
       h1 {
@@ -1361,7 +1362,7 @@ interface EntryFormData {
     }
   `]
 })
-export class ExplorerComponent implements OnInit {
+export class CatalogEntriesComponent implements OnInit {
   readonly store = inject(CatalogStore);
 
   readonly dataTypes: DataType[] = [

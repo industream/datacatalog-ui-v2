@@ -41,7 +41,7 @@ export class ConfigService {
     // Always try to load config.json for runtime configuration
     // This allows Docker environment variables to override build-time settings
     try {
-      const response = await fetch('/assets/config.json');
+      const response = await fetch('/config.json');
       if (response.ok) {
         this.config = await response.json();
         console.log('[ConfigService] Loaded config:', this.config);

@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CatalogEntry, Label } from '../../../../core/models';
+import type { CatalogEntry, Label } from '@industream/datacatalog-client/dto';
 import { LabelColorService } from '../../../../core/services';
 
 export interface EntryDragEvent {

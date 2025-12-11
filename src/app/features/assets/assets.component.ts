@@ -3,9 +3,9 @@ import { Router } from '@angular/router';
 
 import '@carbon/web-components/es/components/button/index.js';
 
-import { AssetDictionary, AssetDictionaryTemplate } from '../../core/models';
+import type { AssetDictionary } from '@industream/datacatalog-client/dto';
 import { ConfirmationService } from '../../core/services';
-import { AssetDictionaryStore } from './asset-dictionary.store';
+import { AssetDictionaryStore, AssetDictionaryTemplate, AssetTemplateNode } from '../../store/asset-dictionary.store';
 
 @Component({
   selector: 'app-assets',
@@ -79,8 +79,8 @@ import { AssetDictionaryStore } from './asset-dictionary.store';
 
       <!-- Create/Edit Modal -->
       @if (showCreateModal()) {
-        <div class="modal-backdrop" (click)="closeModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-backdrop">
+          <div class="modal-content">
             <div class="modal-header">
               <h2>{{ editingDict() ? 'Edit Dictionary' : 'New Asset Dictionary' }}</h2>
               <button class="icon-btn" (click)="closeModal()">

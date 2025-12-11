@@ -4,9 +4,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import '@carbon/web-components/es/components/button/index.js';
 
-import { AssetNode, CatalogEntry, Label } from '../../core/models';
+import type { CatalogEntry, Label } from '@industream/datacatalog-client/dto';
 import { ConfirmationService } from '../../core/services';
-import { AssetDictionaryStore } from './asset-dictionary.store';
+import { AssetDictionaryStore, type AssetNode } from '../../store/asset-dictionary.store';
 import { CatalogStore } from '../../store';
 import {
   TreeNodeAction,
@@ -367,7 +367,8 @@ export class AssetEditorComponent implements OnInit {
         name: event.data.name,
         description: event.data.description,
         icon: event.data.icon,
-        parentId: event.parentId
+        parentId: event.parentId ?? undefined,
+        order: 0
       });
     }
 
