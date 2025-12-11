@@ -43,6 +43,12 @@ export const routes: Routes = [
     title: 'Labels - DataCatalog'
   },
   {
+    path: 'source-types',
+    loadComponent: () => import('./features/source-types/source-types.component')
+      .then(m => m.SourceTypesComponent),
+    title: 'Source Types - DataCatalog'
+  },
+  {
     path: 'settings',
     loadComponent: () => import('./features/settings/settings.component')
       .then(m => m.SettingsComponent),

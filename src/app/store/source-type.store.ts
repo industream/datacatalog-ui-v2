@@ -2,7 +2,7 @@ import { Injectable, inject, signal, computed } from '@angular/core';
 import { catchError, of } from 'rxjs';
 import { ApiService } from '../core/services';
 import { BaseStore } from './base.store';
-import { SourceType } from '../core/models';
+import type { SourceType, SourceTypeCreateRequest, SourceTypeReplaceRequest } from '@industream/datacatalog-client/dto';
 
 @Injectable({ providedIn: 'root' })
 export class SourceTypeStore extends BaseStore {
@@ -27,5 +27,36 @@ export class SourceTypeStore extends BaseStore {
 
   setSourceTypes(types: SourceType[]): void {
     this.sourceTypes.set(types);
+  }
+
+  create(sourceType: SourceTypeCreateRequest): void {
+    this.executeWithLoading(
+      this.api.createSourceTypes([sourceType]),
+      (created) => this.sourceTypes.update(types => [...types, ...created]),
+      'Failed to create source type'
+    );
+  }
+
+  update(sourceType: SourceTypeReplaceRequest): void {
+    this.executeWithLoading(
+      this.api.updateSourceTypes([sourceType]),
+      (updated) => {
+        this.sourceTypes.update(types =>
+          types.map(t => {
+            const updatedType = updated.find(u => u.id === t.id);
+            return updatedType || t;
+          })
+        );
+      },
+      'Failed to update source type'
+    );
+  }
+
+  delete(ids: string[]): void {
+    this.executeWithLoading(
+      this.api.deleteSourceTypes(ids),
+      () => this.sourceTypes.update(types => types.filter(t => !ids.includes(t.id))),
+      'Failed to delete source types'
+    );
   }
 }
