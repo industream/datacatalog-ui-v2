@@ -4,19 +4,20 @@ import { ActivatedRoute, Router } from '@angular/router';
 
 import '@carbon/web-components/es/components/button/index.js';
 
-import { AssetNode, CatalogEntry, Label } from '../../core/models';
+import type { CatalogEntry, Label } from '@industream/datacatalog-client/dto';
 import { ConfirmationService } from '../../core/services';
-import { AssetDictionaryStore } from './asset-dictionary.store';
+import { AssetDictionaryStore, type AssetNode } from '../../store/asset-dictionary.store';
 import { CatalogStore } from '../../store';
 import {
-  TreeNodeComponent,
   TreeNodeAction,
   TreeNodeDragEvent,
-  EntryItemComponent,
   NodeFormModalComponent,
   NodeSaveEvent,
-  SelectionBarComponent,
-  LabelFilterComponent
+  EditorHeaderComponent,
+  TreePanelComponent,
+  EntriesPanelComponent,
+  EntriesPanelDragEvent,
+  EntriesPanelSelectEvent
 } from './components';
 
 @Component({
@@ -24,168 +25,59 @@ import {
   standalone: true,
   imports: [
     CommonModule,
-    TreeNodeComponent,
-    EntryItemComponent,
     NodeFormModalComponent,
-    SelectionBarComponent,
-    LabelFilterComponent
+    EditorHeaderComponent,
+    TreePanelComponent,
+    EntriesPanelComponent
   ],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     <div class="editor-container">
       <!-- Header -->
-      <header class="editor-header">
-        <div class="header-left">
-          <button class="back-btn" (click)="goBack()">
-            <span class="material-symbols-outlined">arrow_back</span>
-          </button>
-          @if (dictionary()) {
-            <div class="header-info">
-              <div class="dict-icon" [style.background]="dictionary()?.color || 'var(--dc-primary)'">
-                <span class="material-symbols-outlined">{{ dictionary()?.icon || 'account_tree' }}</span>
-              </div>
-              <div class="header-text">
-                <h1>{{ dictionary()?.name }}</h1>
-                <p class="subtitle">{{ dictionary()?.description || 'Asset hierarchy editor' }}</p>
-              </div>
-            </div>
-          }
-        </div>
-        <div class="header-actions">
-          <cds-button kind="tertiary" (click)="addRootNode()">
-            <span class="material-symbols-outlined" slot="icon">add</span>
-            Add Root Node
-          </cds-button>
-        </div>
-      </header>
+      <app-editor-header
+        [dictionary]="dictionary()"
+        (backClick)="goBack()"
+        (addRootNode)="addRootNode()">
+      </app-editor-header>
 
       <div class="editor-content">
         <!-- Left Panel: Asset Tree -->
-        <div class="tree-panel">
-          <div class="panel-header">
-            <h2>Asset Hierarchy</h2>
-            <span class="node-count">{{ flatNodes().length }} nodes</span>
-          </div>
+        <app-tree-panel
+          [nodes]="treeNodes()"
+          [nodeCount]="flatNodes().length"
+          [selectedNodeId]="selectedNodeId()"
+          [dragOverNodeId]="dragOverNodeId()"
+          [loading]="store.loading()"
+          (nodeAction)="onTreeNodeAction($event)"
+          (nodeDrag)="onTreeNodeDrag($event)"
+          (addRootNode)="addRootNode()"
+          (dropOnRoot)="onDropOnRoot($event)">
+        </app-tree-panel>
 
-          <div class="tree-container"
-               (dragover)="onDragOver($event)"
-               (drop)="onDropOnRoot($event)">
-            @if (treeNodes().length === 0) {
-              <div class="empty-tree">
-                <span class="material-symbols-outlined">account_tree</span>
-                <p>No nodes yet</p>
-                <button class="add-btn" (click)="addRootNode()">
-                  <span class="material-symbols-outlined">add</span>
-                  Add first node
-                </button>
-              </div>
-            } @else {
-              <div class="tree-content">
-                @for (node of treeNodes(); track node.id) {
-                  <app-tree-node
-                    [node]="node"
-                    [level]="0"
-                    [selectedNodeId]="selectedNodeId()"
-                    [dragOverNodeId]="dragOverNodeId()"
-                    (action)="onTreeNodeAction($event)"
-                    (dragEvent)="onTreeNodeDrag($event)">
-                  </app-tree-node>
-                }
-              </div>
-            }
-          </div>
-        </div>
-
-        <!-- Right Panel: Tag Assignment -->
-        <div class="tags-panel">
-          <div class="panel-header">
-            <h2>Catalog Entries</h2>
-            <div class="filter-controls">
-              <input
-                type="text"
-                class="search-input"
-                placeholder="Search entries..."
-                [value]="searchQuery()"
-                (input)="onSearchInput($event)">
-            </div>
-          </div>
-
-          <!-- Label Filter -->
-          <app-label-filter
-            [labels]="availableLabels()"
-            [selectedLabelId]="selectedLabelFilter()"
-            (labelSelect)="setLabelFilter($event)">
-          </app-label-filter>
-
-          <div class="tags-container">
-            @if (selectedNodeId()) {
-              <div class="assigned-section">
-                <h3>
-                  <span class="material-symbols-outlined">check_circle</span>
-                  Assigned to "{{ getSelectedNode()?.name }}"
-                  <span class="count-badge">{{ assignedEntries().length }}</span>
-                </h3>
-                <div class="entries-list assigned"
-                     (dragover)="onDragOver($event)"
-                     (drop)="onDropEntry($event)">
-                  @if (assignedEntries().length === 0) {
-                    <p class="empty-hint">Drag entries here or double-click to assign</p>
-                  } @else {
-                    @for (entry of assignedEntries(); track entry.id) {
-                      <app-entry-item
-                        [entry]="entry"
-                        [isAssigned]="true"
-                        (remove)="unassignEntry($event)"
-                        (dragStart)="onEntryDragStart($event.event, $event.entry, true)">
-                      </app-entry-item>
-                    }
-                  }
-                </div>
-              </div>
-            }
-
-            <div class="available-section">
-              <h3>
-                <span class="material-symbols-outlined">inventory_2</span>
-                Available Entries
-                <span class="count-badge">{{ filteredAvailableEntries().length }}</span>
-              </h3>
-
-              <div class="help-hint">
-                <span class="material-symbols-outlined">info</span>
-                <span><kbd>Ctrl</kbd>+Click for multi-select, <kbd>Shift</kbd>+Click for range. Drag & drop to assign.</span>
-              </div>
-
-              <!-- Selection bar -->
-              @if (selectedEntryIds().size > 0) {
-                <app-selection-bar
-                  [count]="selectedEntryIds().size"
-                  [showAssignButton]="!!selectedNodeId()"
-                  (assign)="assignSelectedEntries()"
-                  (clear)="clearSelection()">
-                </app-selection-bar>
-              }
-
-              <div class="entries-list">
-                @for (entry of filteredAvailableEntries(); track entry.id) {
-                  <app-entry-item
-                    [entry]="entry"
-                    [isInOtherNode]="isInOtherNode(entry)"
-                    [isSelected]="isEntrySelected(entry.id)"
-                    [showCheckbox]="true"
-                    [otherNodesNames]="getNodesForEntry(entry)"
-                    (select)="onEntryClick($event.event, $event.entry)"
-                    (doubleClick)="assignEntry($event)"
-                    (checkboxChange)="toggleEntrySelection($event.id)"
-                    (dragStart)="onEntryDragStart($event.event, $event.entry, false)">
-                  </app-entry-item>
-                } @empty {
-                  <p class="empty-hint">No entries match your filters</p>
-                }
-              </div>
-            </div>
-          </div>
-        </div>
+        <!-- Right Panel: Entry Assignment -->
+        <app-entries-panel
+          [searchQuery]="searchQuery()"
+          [labels]="availableLabels()"
+          [selectedLabelId]="selectedLabelFilter()"
+          [selectedNodeName]="getSelectedNode()?.name || null"
+          [selectedNodeId]="selectedNodeId()"
+          [assignedEntries]="assignedEntries()"
+          [availableEntries]="filteredAvailableEntries()"
+          [selectedEntryIds]="selectedEntryIds()"
+          [nodeEntryMap]="nodeEntryMap()"
+          [nodeNameMap]="nodeNameMap()"
+          [loading]="catalogStore.loading()"
+          (searchChange)="onSearchChange($event)"
+          (labelSelect)="setLabelFilter($event)"
+          (entrySelect)="onEntryClick($event)"
+          (entryDragStart)="onEntryDragStart($event)"
+          (dropEntry)="onDropEntry($event)"
+          (assignEntry)="assignEntry($event)"
+          (unassign)="unassignEntry($event)"
+          (assignSelected)="assignSelectedEntries()"
+          (clearSelection)="clearSelection()"
+          (toggleSelection)="toggleEntrySelection($event)">
+        </app-entries-panel>
       </div>
 
       <!-- Node Edit Modal -->
@@ -243,6 +135,22 @@ export class AssetEditorComponent implements OnInit {
   readonly treeNodes = computed(() => {
     const nodes = this.store.selectedDictionaryTree();
     return this.applyExpandState(nodes);
+  });
+
+  readonly nodeEntryMap = computed(() => {
+    const map = new Map<string, string[]>();
+    this.flatNodes().forEach(node => {
+      map.set(node.id, node.entryIds);
+    });
+    return map;
+  });
+
+  readonly nodeNameMap = computed(() => {
+    const map = new Map<string, string>();
+    this.flatNodes().forEach(node => {
+      map.set(node.id, node.name);
+    });
+    return map;
   });
 
   readonly availableLabels = computed(() => {
@@ -310,19 +218,18 @@ export class AssetEditorComponent implements OnInit {
         this.catalogStore.loadAll();
       }
     } else {
-      this.router.navigate(['/assets']);
+      this.router.navigate(['/asset-dictionaries']);
     }
   }
 
   // Navigation
   goBack(): void {
-    this.router.navigate(['/assets']);
+    this.router.navigate(['/asset-dictionaries']);
   }
 
   // Search
-  onSearchInput(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    this.searchQuery.set(input.value);
+  onSearchChange(value: string): void {
+    this.searchQuery.set(value);
   }
 
   // Label filter
@@ -460,18 +367,15 @@ export class AssetEditorComponent implements OnInit {
         name: event.data.name,
         description: event.data.description,
         icon: event.data.icon,
-        parentId: event.parentId
+        parentId: event.parentId ?? undefined,
+        order: 0
       });
     }
 
     this.closeNodeModal();
   }
 
-  // Drag & Drop for root
-  onDragOver(event: DragEvent): void {
-    event.preventDefault();
-  }
-
+  // Drop on root
   onDropOnRoot(event: DragEvent): void {
     event.preventDefault();
 
@@ -497,18 +401,18 @@ export class AssetEditorComponent implements OnInit {
   }
 
   // Entry drag & drop
-  onEntryDragStart(event: DragEvent, entry: CatalogEntry, _fromAssigned: boolean): void {
-    this.draggedEntry = entry;
+  onEntryDragStart(event: EntriesPanelDragEvent): void {
+    this.draggedEntry = event.entry;
 
     const selectedIds = this.selectedEntryIds();
-    const idsToTransfer = selectedIds.has(entry.id) && selectedIds.size > 1
+    const idsToTransfer = selectedIds.has(event.entry.id) && selectedIds.size > 1
       ? Array.from(selectedIds)
-      : [entry.id];
+      : [event.entry.id];
 
-    event.dataTransfer?.setData('text/plain', JSON.stringify(idsToTransfer));
+    event.event.dataTransfer?.setData('text/plain', JSON.stringify(idsToTransfer));
 
-    if (idsToTransfer.length > 1 && event.dataTransfer) {
-      event.dataTransfer.effectAllowed = 'move';
+    if (idsToTransfer.length > 1 && event.event.dataTransfer) {
+      event.event.dataTransfer.effectAllowed = 'move';
     }
   }
 
@@ -534,10 +438,8 @@ export class AssetEditorComponent implements OnInit {
         : [this.draggedEntry.id])
       : [];
 
-    idsToAssign.forEach(entryId => {
-      this.store.addEntryToNode(dict.id, nodeId, entryId);
-    });
-
+    // Use batch operation instead of N+1 calls
+    this.store.addEntriesToNode(dict.id, nodeId, idsToAssign);
     this.clearSelection();
   }
 
@@ -563,31 +465,12 @@ export class AssetEditorComponent implements OnInit {
     const nodeId = this.selectedNodeId();
     if (!dict || !nodeId) return;
 
-    this.selectedEntryIds().forEach(entryId => {
-      this.store.addEntryToNode(dict.id, nodeId, entryId);
-    });
-
+    // Use batch operation instead of N+1 calls
+    this.store.addEntriesToNode(dict.id, nodeId, Array.from(this.selectedEntryIds()));
     this.clearSelection();
   }
 
-  // Entry helpers
-  isInOtherNode(entry: CatalogEntry): boolean {
-    const nodeId = this.selectedNodeId();
-    return this.flatNodes().some(node => node.id !== nodeId && node.entryIds.includes(entry.id));
-  }
-
-  getNodesForEntry(entry: CatalogEntry): string {
-    return this.flatNodes()
-      .filter(node => node.entryIds.includes(entry.id))
-      .map(node => node.name)
-      .join(', ');
-  }
-
   // Multi-selection
-  isEntrySelected(entryId: string): boolean {
-    return this.selectedEntryIds().has(entryId);
-  }
-
   toggleEntrySelection(entryId: string): void {
     const current = this.selectedEntryIds();
     const newSet = new Set(current);
@@ -602,25 +485,28 @@ export class AssetEditorComponent implements OnInit {
     this.lastClickedEntryId = entryId;
   }
 
-  onEntryClick(event: MouseEvent, entry: CatalogEntry): void {
-    if ((event.target as HTMLElement).classList.contains('entry-checkbox')) {
+  onEntryClick(event: EntriesPanelSelectEvent): void {
+    const mouseEvent = event.event;
+    const entry = event.entry;
+
+    if ((mouseEvent.target as HTMLElement).classList.contains('entry-checkbox')) {
       return;
     }
 
     // Shift+click for range selection
-    if (event.shiftKey && this.lastClickedEntryId) {
+    if (mouseEvent.shiftKey && this.lastClickedEntryId) {
       this.handleRangeSelection(entry);
       return;
     }
 
     // Ctrl/Cmd+click for toggle
-    if (event.ctrlKey || event.metaKey) {
+    if (mouseEvent.ctrlKey || mouseEvent.metaKey) {
       this.toggleEntrySelection(entry.id);
       return;
     }
 
     // Regular click
-    if (!this.isEntrySelected(entry.id)) {
+    if (!this.selectedEntryIds().has(entry.id)) {
       this.selectedEntryIds.set(new Set([entry.id]));
       this.lastClickedEntryId = entry.id;
     }

@@ -13,34 +13,40 @@ export const routes: Routes = [
     title: 'Dashboard - DataCatalog'
   },
   {
-    path: 'explorer',
-    loadComponent: () => import('./features/explorer/explorer.component')
-      .then(m => m.ExplorerComponent),
-    title: 'Explorer - DataCatalog'
+    path: 'catalog-entries',
+    loadComponent: () => import('./features/catalog-entries/catalog-entries.component')
+      .then(m => m.CatalogEntriesComponent),
+    title: 'Catalog Entries - DataCatalog'
   },
   {
-    path: 'assets',
+    path: 'asset-dictionaries',
     loadComponent: () => import('./features/assets/assets.component')
       .then(m => m.AssetsComponent),
     title: 'Asset Dictionaries - DataCatalog'
   },
   {
-    path: 'assets/:id',
+    path: 'asset-dictionaries/:id',
     loadComponent: () => import('./features/assets/asset-editor.component')
       .then(m => m.AssetEditorComponent),
     title: 'Asset Editor - DataCatalog'
   },
   {
-    path: 'sources',
+    path: 'source-connections',
     loadComponent: () => import('./features/sources/sources.component')
       .then(m => m.SourcesComponent),
-    title: 'Sources - DataCatalog'
+    title: 'Source Connection - DataCatalog'
   },
   {
     path: 'labels',
     loadComponent: () => import('./features/labels/labels.component')
       .then(m => m.LabelsComponent),
     title: 'Labels - DataCatalog'
+  },
+  {
+    path: 'source-types',
+    loadComponent: () => import('./features/source-types/source-types.component')
+      .then(m => m.SourceTypesComponent),
+    title: 'Source Types - DataCatalog'
   },
   {
     path: 'settings',

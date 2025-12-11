@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AssetNode } from '../../../../core/models';
+import type { AssetNode } from '../../../../store/asset-dictionary.store';
 
 export interface TreeNodeAction {
   type: 'select' | 'toggle-expand' | 'add-child' | 'edit' | 'delete';

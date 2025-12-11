@@ -231,10 +231,11 @@ export class HeaderComponent {
 
   readonly navItems: NavItem[] = [
     { path: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { path: '/explorer', label: 'Explorer', icon: 'folder_open' },
-    { path: '/assets', label: 'Asset Dictionaries', icon: 'account_tree' },
-    { path: '/sources', label: 'Sources', icon: 'cable' },
-    { path: '/labels', label: 'Labels', icon: 'label' }
+    { path: '/catalog-entries', label: 'Entries', icon: 'folder_open' },
+    { path: '/source-connections', label: 'Sources', icon: 'cable' },
+    { path: '/source-types', label: 'Source Types', icon: 'category' },
+    { path: '/labels', label: 'Labels', icon: 'label' },
+     { path: '/asset-dictionaries', label: 'Asset Dictionaries', icon: 'account_tree' },
   ];
 
   readonly isDarkTheme = signal(true);

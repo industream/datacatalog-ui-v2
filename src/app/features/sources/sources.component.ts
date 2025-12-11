@@ -6,11 +6,13 @@ import '@carbon/web-components/es/components/text-input/index.js';
 import '@carbon/web-components/es/components/dropdown/index.js';
 
 import { CatalogStore } from '../../store';
-import { SourceConnection, SourceType } from '../../core/models';
+import type { SourceConnection, SourceType } from '@industream/datacatalog-client/dto';
+import { ConnectionParamsEditorComponent } from './components/connection-params-editor.component';
 
 @Component({
   selector: 'app-sources',
   standalone: true,
+  imports: [ConnectionParamsEditorComponent],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
     <div class="sources-container">
@@ -130,11 +132,11 @@ import { SourceConnection, SourceType } from '../../core/models';
 
       <!-- Create/Edit Modal -->
       @if (showModal()) {
-        <div class="modal-backdrop" (click)="closeModal()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-backdrop">
+          <div class="modal-content">
             <div class="modal-header">
               <h2>{{ editingConnection() ? 'Edit Connection' : 'New Connection' }}</h2>
-              <button class="icon-btn" (click)="closeModal()">
+              <button type="button" class="icon-btn" (click)="closeModal()">
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -164,90 +166,16 @@ import { SourceConnection, SourceType } from '../../core/models';
 
               <!-- Dynamic fields based on source type -->
               @if (selectedSourceType()) {
-                @switch (selectedSourceType()?.name) {
-                  @case ('DataBridge') {
-                    <div class="form-group">
-                      <label for="url">URL</label>
-                      <input type="text" id="url" class="form-input" [value]="formData()['url'] || ''" (input)="updateFormField('url', $event)" placeholder="https://...">
-                    </div>
-                  }
-                  @case ('PostgreSQL') {
-                    <div class="form-group">
-                      <label for="host">Host</label>
-                      <input type="text" id="host" class="form-input" [value]="formData()['host'] || ''" (input)="updateFormField('host', $event)">
-                    </div>
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label for="port">Port</label>
-                        <input type="number" id="port" class="form-input" [value]="formData()['port'] || 5432" (input)="updateFormField('port', $event)">
-                      </div>
-                      <div class="form-group">
-                        <label for="database">Database</label>
-                        <input type="text" id="database" class="form-input" [value]="formData()['database'] || ''" (input)="updateFormField('database', $event)">
-                      </div>
-                    </div>
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label for="username">Username</label>
-                        <input type="text" id="username" class="form-input" [value]="formData()['username'] || ''" (input)="updateFormField('username', $event)">
-                      </div>
-                      <div class="form-group">
-                        <label for="password">Password</label>
-                        <input type="password" id="password" class="form-input"
-                          [value]="formData()['password'] || ''"
-                          [placeholder]="editingConnection() ? '(unchanged)' : ''"
-                          (input)="updateFormField('password', $event)">
-                        @if (editingConnection()) {
-                          <span class="field-hint">Leave empty to keep current password</span>
-                        }
-                      </div>
-                    </div>
-                  }
-                  @case ('InfluxDB2') {
-                    <div class="form-group">
-                      <label for="url">URL</label>
-                      <input type="text" id="url" class="form-input" [value]="formData()['url'] || ''" (input)="updateFormField('url', $event)">
-                    </div>
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label for="org">Organization</label>
-                        <input type="text" id="org" class="form-input" [value]="formData()['org'] || ''" (input)="updateFormField('org', $event)">
-                      </div>
-                      <div class="form-group">
-                        <label for="bucket">Bucket</label>
-                        <input type="text" id="bucket" class="form-input" [value]="formData()['bucket'] || ''" (input)="updateFormField('bucket', $event)">
-                      </div>
-                    </div>
-                    <div class="form-group">
-                      <label for="token">Token</label>
-                      <input type="password" id="token" class="form-input"
-                        [value]="formData()['token'] || ''"
-                        [placeholder]="editingConnection() ? '(unchanged)' : ''"
-                        (input)="updateFormField('token', $event)">
-                      @if (editingConnection()) {
-                        <span class="field-hint">Leave empty to keep current token</span>
-                      }
-                    </div>
-                  }
-                  @case ('MQTT') {
-                    <div class="form-group">
-                      <label for="host">Broker Host</label>
-                      <input type="text" id="host" class="form-input" [value]="formData()['host'] || ''" (input)="updateFormField('host', $event)">
-                    </div>
-                    <div class="form-row">
-                      <div class="form-group">
-                        <label for="port">Port</label>
-                        <input type="number" id="port" class="form-input" [value]="formData()['port'] || 1883" (input)="updateFormField('port', $event)">
-                      </div>
-                      <div class="form-group">
-                        <label for="topic">Topic</label>
-                        <input type="text" id="topic" class="form-input" [value]="formData()['topic'] || ''" (input)="updateFormField('topic', $event)">
-                      </div>
-                    </div>
-                  }
-                  @default {
-                    <p class="info-text">Configure additional settings after creation.</p>
-                  }
+                @if (isDataBridgeType()) {
+                  <div class="form-group">
+                    <label for="url">URL</label>
+                    <input type="text" id="url" class="form-input" [value]="formData()['url'] || ''" (input)="updateFormField('url', $event)" placeholder="https://...">
+                  </div>
+                } @else {
+                  <app-connection-params-editor
+                    [initialParams]="connectionParams()"
+                    (paramsChange)="onParamsChange($event)">
+                  </app-connection-params-editor>
                 }
               }
             </div>
@@ -617,10 +545,44 @@ export class SourcesComponent implements OnInit {
     return this.store.sourceTypes().find(t => t.id === typeId) || null;
   });
 
+  readonly connectionParams = computed(() => {
+    const data = this.formData();
+    const { name, sourceTypeId, ...params } = data;
+    return params;
+  });
+
+  // DataBridge sourceType ID - should be configured based on your API
+  private readonly DATABRIDGE_TYPE_ID = 'databridge';
+
   ngOnInit(): void {
     if (this.store.sourceConnections().length === 0) {
       this.store.loadAll();
     }
+  }
+
+  isDataBridgeType(): boolean {
+    const selectedType = this.selectedSourceType();
+    // Check by ID instead of name
+    return selectedType?.id.toLowerCase() === this.DATABRIDGE_TYPE_ID ||
+           selectedType?.name.toLowerCase() === 'databridge';
+  }
+
+  getConnectionParams(): Record<string, unknown> {
+    const data = this.formData();
+    const { name, sourceTypeId, ...params } = data;
+    return params;
+  }
+
+  onParamsChange(params: Record<string, string>): void {
+    // Clean formData: remove all keys except name and sourceTypeId, then add the new params
+    this.formData.update(data => {
+      const { name, sourceTypeId } = data;
+      return {
+        name,
+        sourceTypeId,
+        ...params
+      };
+    });
   }
 
   getSourceColor(type: string | undefined): string {

@@ -1,6 +1,6 @@
-import { Component, Input, Output, EventEmitter, signal, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal, computed, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AssetNode } from '../../../../core/models';
+import type { AssetNode } from '../../../../store/asset-dictionary.store';
 
 import '@carbon/web-components/es/components/button/index.js';
 
@@ -16,14 +16,19 @@ export interface NodeSaveEvent {
   parentId: string | null;
 }
 
+interface ValidationErrors {
+  name?: string;
+  description?: string;
+}
+
 @Component({
   selector: 'app-node-form-modal',
   standalone: true,
   imports: [CommonModule],
   schemas: [CUSTOM_ELEMENTS_SCHEMA],
   template: `
-    <div class="modal-backdrop" (click)="onClose()">
-      <div class="modal-content modal-sm" (click)="$event.stopPropagation()">
+    <div class="modal-backdrop">
+      <div class="modal-content modal-sm">
         <div class="modal-header">
           <h2>{{ editingNode ? 'Edit Node' : 'New Node' }}</h2>
           <button class="icon-btn" (click)="onClose()">
@@ -32,25 +37,39 @@ export interface NodeSaveEvent {
         </div>
 
         <div class="modal-body">
-          <div class="form-group">
+          <div class="form-group" [class.has-error]="touched().name && errors().name">
             <label for="node-name">Name *</label>
             <input
               type="text"
               id="node-name"
               class="form-input"
+              [class.input-error]="touched().name && errors().name"
               [value]="name()"
               (input)="onNameInput($event)"
-              placeholder="e.g., Production Line 1">
+              (blur)="markTouched('name')"
+              placeholder="e.g., Production Line 1"
+              maxlength="100">
+            @if (touched().name && errors().name) {
+              <span class="error-message">{{ errors().name }}</span>
+            }
+            <span class="char-count">{{ name().length }}/100</span>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" [class.has-error]="touched().description && errors().description">
             <label for="node-description">Description</label>
             <textarea
               id="node-description"
               class="form-textarea"
+              [class.input-error]="touched().description && errors().description"
               [value]="description()"
               (input)="onDescriptionInput($event)"
-              placeholder="Optional description..."></textarea>
+              (blur)="markTouched('description')"
+              placeholder="Optional description..."
+              maxlength="500"></textarea>
+            @if (touched().description && errors().description) {
+              <span class="error-message">{{ errors().description }}</span>
+            }
+            <span class="char-count">{{ description().length }}/500</span>
           </div>
 
           <div class="form-group">
@@ -70,7 +89,7 @@ export interface NodeSaveEvent {
 
         <div class="modal-footer">
           <cds-button kind="ghost" (click)="onClose()">Cancel</cds-button>
-          <cds-button kind="primary" (click)="onSave()" [disabled]="!name()">
+          <cds-button kind="primary" (click)="onSave()" [disabled]="!isValid()">
             {{ editingNode ? 'Update' : 'Create' }}
           </cds-button>
         </div>
@@ -139,12 +158,41 @@ export interface NodeSaveEvent {
 
     .form-group {
       margin-bottom: var(--dc-space-lg);
+      position: relative;
 
       label {
         display: block;
         margin-bottom: var(--dc-space-xs);
         font-weight: 500;
         font-size: 0.875rem;
+      }
+
+      &.has-error label {
+        color: var(--dc-error);
+      }
+    }
+
+    .error-message {
+      display: block;
+      margin-top: var(--dc-space-xs);
+      font-size: 0.75rem;
+      color: var(--dc-error);
+    }
+
+    .char-count {
+      display: block;
+      margin-top: var(--dc-space-xs);
+      font-size: 0.7rem;
+      color: var(--dc-text-tertiary);
+      text-align: right;
+    }
+
+    .input-error {
+      border-color: var(--dc-error) !important;
+
+      &:focus {
+        border-color: var(--dc-error) !important;
+        box-shadow: 0 0 0 1px var(--dc-error);
       }
     }
 
@@ -254,6 +302,7 @@ export class NodeFormModalComponent {
   readonly name = signal('');
   readonly description = signal('');
   readonly icon = signal('folder');
+  readonly touched = signal<{ name: boolean; description: boolean }>({ name: false, description: false });
 
   readonly availableIcons = [
     'folder', 'factory', 'precision_manufacturing', 'settings',
@@ -261,6 +310,37 @@ export class NodeFormModalComponent {
     'air', 'electrical_services', 'water_drop', 'thermostat',
     'sensors', 'speed', 'monitor_heart', 'analytics'
   ];
+
+  readonly errors = computed((): ValidationErrors => {
+    const errs: ValidationErrors = {};
+    const nameValue = this.name().trim();
+    const descValue = this.description();
+
+    if (!nameValue) {
+      errs.name = 'Name is required';
+    } else if (nameValue.length < 2) {
+      errs.name = 'Name must be at least 2 characters';
+    } else if (nameValue.length > 100) {
+      errs.name = 'Name must be less than 100 characters';
+    } else if (!/^[a-zA-Z0-9\s\-_()]+$/.test(nameValue)) {
+      errs.name = 'Name can only contain letters, numbers, spaces, hyphens, underscores, and parentheses';
+    }
+
+    if (descValue && descValue.length > 500) {
+      errs.description = 'Description must be less than 500 characters';
+    }
+
+    return errs;
+  });
+
+  readonly isValid = computed(() => {
+    const errs = this.errors();
+    return !errs.name && !errs.description;
+  });
+
+  markTouched(field: 'name' | 'description'): void {
+    this.touched.update(t => ({ ...t, [field]: true }));
+  }
 
   onNameInput(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -273,12 +353,15 @@ export class NodeFormModalComponent {
   }
 
   onSave(): void {
-    if (!this.name()) return;
+    // Mark all fields as touched to show errors
+    this.touched.set({ name: true, description: true });
+
+    if (!this.isValid()) return;
 
     this.save.emit({
       data: {
-        name: this.name(),
-        description: this.description() || undefined,
+        name: this.name().trim(),
+        description: this.description().trim() || undefined,
         icon: this.icon()
       },
       editingNode: this.editingNode,

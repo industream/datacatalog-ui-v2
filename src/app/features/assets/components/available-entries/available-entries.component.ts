@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CatalogEntry } from '../../../../core/models';
+import type { CatalogEntry } from '@industream/datacatalog-client/dto';
 import { EntryItemComponent, EntryDragEvent, EntrySelectEvent as EntryItemSelectEvent } from '../entry-item/entry-item.component';
 import { SelectionBarComponent } from '../selection-bar/selection-bar.component';
 import { SkeletonListComponent } from '../../../../shared/components';
@@ -101,6 +101,7 @@ export interface AvailableEntrySelectEvent {
     .entries-list {
       display: flex;
       flex-direction: column;
+      min-height: 100px;
       flex: 1;
       min-height: 0;
       overflow-y: auto;
