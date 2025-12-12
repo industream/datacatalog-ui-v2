@@ -8,6 +8,9 @@ import '@carbon/web-components/es/components/dropdown/index.js';
 import { CatalogStore } from '../../store';
 import type { SourceConnection, SourceType } from '@industream/datacatalog-client/dto';
 import { ConnectionParamsEditorComponent } from './components/connection-params-editor.component';
+import { SOURCE_TYPE_IDS } from '../../core/constants/source-types';
+
+type ViewMode = 'table' | 'grid' | 'list';
 
 @Component({
   selector: 'app-sources',
@@ -43,90 +46,213 @@ import { ConnectionParamsEditorComponent } from './components/connection-params-
           </cds-button>
         </div>
       } @else {
-        <!-- Source Type Filter -->
-        <div class="filter-bar">
-          <div class="type-filters">
-            <button
-              class="type-filter-btn"
-              [class.active]="selectedType() === null"
-              (click)="filterByType(null)">
-              All ({{ store.sourceConnections().length }})
-            </button>
-            @for (type of sourceTypesWithCount(); track type.id) {
+        <!-- Toolbar -->
+        <div class="toolbar">
+          <div class="filters">
+            <input
+              type="text"
+              class="filter-input"
+              placeholder="Filter by name..."
+              [value]="nameFilter()"
+              (input)="onNameFilterChange($event)">
+
+            <div class="type-filters">
               <button
                 class="type-filter-btn"
-                [class.active]="selectedType() === type.name"
-                [style.--type-color]="getSourceColor(type.name)"
-                (click)="filterByType(type.name)">
-                {{ type.name }} ({{ type.count }})
+                [class.active]="selectedType() === null"
+                (click)="filterByType(null)">
+                All ({{ store.sourceConnections().length }})
+              </button>
+              @for (type of sourceTypesWithCount(); track type.id) {
+                <button
+                  class="type-filter-btn"
+                  [class.active]="selectedType() === type.name"
+                  [style.--type-color]="getSourceColor(type.name)"
+                  (click)="filterByType(type.name)">
+                  {{ type.name }} ({{ type.count }})
+                </button>
+              }
+            </div>
+          </div>
+
+          <div class="view-toggle">
+            @for (view of viewModes; track view.id) {
+              <button
+                class="view-btn"
+                [class.active]="currentView() === view.id"
+                (click)="setView(view.id)"
+                [title]="view.label">
+                <span class="material-symbols-outlined">{{ view.icon }}</span>
               </button>
             }
           </div>
         </div>
 
-        <!-- Connections Grid -->
-        <div class="connections-grid">
-          @for (connection of filteredConnections(); track connection.id) {
-            <div class="connection-card">
-              <div class="card-header">
-                <span class="source-type-badge" [style.background]="getSourceColor(connection.sourceType.name)">
-                  {{ connection.sourceType.name || 'Unknown' }}
-                </span>
-                <div class="card-actions">
-                  <button class="icon-btn" title="Edit" (click)="onEditConnection(connection)">
-                    <span class="material-symbols-outlined">edit</span>
-                  </button>
-                  <button class="icon-btn danger" title="Delete" (click)="onDeleteConnection(connection)">
-                    <span class="material-symbols-outlined">delete</span>
-                  </button>
-                </div>
+        <!-- View Content -->
+        <div class="content-area" [class]="currentView()">
+          @switch (currentView()) {
+            @case ('table') {
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th class="checkbox-col">
+                        <input
+                          type="checkbox"
+                          [checked]="allSelected()"
+                          [indeterminate]="someSelected()"
+                          (change)="toggleSelectAll()">
+                      </th>
+                      <th class="name-col">Name</th>
+                      <th class="type-col">Source Type</th>
+                      <th class="params-col">Connection Properties</th>
+                      <th class="entries-col">Entries</th>
+                      <th class="actions-col"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (connection of filteredConnections(); track connection.id) {
+                      <tr [class.selected]="selectedIds().has(connection.id)">
+                        <td class="checkbox-col">
+                          <input
+                            type="checkbox"
+                            [checked]="selectedIds().has(connection.id)"
+                            (change)="toggleSelect(connection.id)">
+                        </td>
+                        <td class="name-col">
+                          <span class="connection-name">{{ connection.name }}</span>
+                        </td>
+                        <td class="type-col">
+                          <span class="source-type-badge" [style.background]="getSourceColor(connection.sourceType.name)">
+                            {{ connection.sourceType.name || 'Unknown' }}
+                          </span>
+                        </td>
+                        <td class="params-col">
+                          <span class="json-preview" [title]="formatJson(connection)">
+                            {{ getObjectPreview(connection) }}
+                          </span>
+                        </td>
+                        <td class="entries-col">
+                          <span class="entry-count">{{ getEntryCount(connection.id) }}</span>
+                        </td>
+                        <td class="actions-col">
+                          <button class="icon-btn" title="Edit" (click)="onEditConnection(connection)">
+                            <span class="material-symbols-outlined">edit</span>
+                          </button>
+                          <button class="icon-btn danger" title="Delete" (click)="onDeleteConnection(connection)">
+                            <span class="material-symbols-outlined">delete</span>
+                          </button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
               </div>
-              <h3 class="card-title">{{ connection.name }}</h3>
-              <div class="card-details">
-                @if (connection['host']) {
-                  <div class="detail-row">
-                    <span class="detail-label">Host:</span>
-                    <span class="detail-value">{{ connection['host'] }}</span>
-                  </div>
-                }
-                @if (connection['port']) {
-                  <div class="detail-row">
-                    <span class="detail-label">Port:</span>
-                    <span class="detail-value">{{ connection['port'] }}</span>
-                  </div>
-                }
-                @if (connection['database']) {
-                  <div class="detail-row">
-                    <span class="detail-label">Database:</span>
-                    <span class="detail-value">{{ connection['database'] }}</span>
-                  </div>
-                }
-                @if (connection['bucket']) {
-                  <div class="detail-row">
-                    <span class="detail-label">Bucket:</span>
-                    <span class="detail-value">{{ connection['bucket'] }}</span>
-                  </div>
-                }
-                @if (connection['topic']) {
-                  <div class="detail-row">
-                    <span class="detail-label">Topic:</span>
-                    <span class="detail-value">{{ connection['topic'] }}</span>
-                  </div>
-                }
-                @if (connection['url']) {
-                  <div class="detail-row">
-                    <span class="detail-label">URL:</span>
-                    <span class="detail-value">{{ connection['url'] }}</span>
+            }
+            @case ('grid') {
+              <div class="connections-grid">
+                @for (connection of filteredConnections(); track connection.id) {
+                  <div class="connection-card" [class.selected]="selectedIds().has(connection.id)">
+                    <div class="card-header">
+                      <div class="card-checkbox">
+                        <input
+                          type="checkbox"
+                          [checked]="selectedIds().has(connection.id)"
+                          (change)="toggleSelect(connection.id); $event.stopPropagation()"
+                          (click)="$event.stopPropagation()">
+                      </div>
+                      <span class="source-type-badge" [style.background]="getSourceColor(connection.sourceType.name)">
+                        {{ connection.sourceType.name || 'Unknown' }}
+                      </span>
+                    </div>
+                    <h3 class="card-title">{{ connection.name }}</h3>
+
+                    <div class="card-info">
+                      <span class="entry-count-badge">
+                        {{ getEntryCount(connection.id) }} entries
+                      </span>
+                    </div>
+
+                    <!-- Connection Properties -->
+                    @if (getObjectKeys(connection).length > 2) {
+                      <div class="card-section">
+                        <h5>Properties</h5>
+                        <div class="card-details">
+                          @for (key of getObjectKeys(connection); track key) {
+                            @if (key !== 'id' && key !== 'sourceType') {
+                              <div class="detail-item">
+                                <span class="detail-key">{{ key }}:</span>
+                                <span class="detail-value">{{ formatObjectValue(connection[key]) }}</span>
+                              </div>
+                            }
+                          }
+                        </div>
+                      </div>
+                    }
+
+                    <div class="card-actions">
+                      <button class="icon-btn" title="Edit" (click)="onEditConnection(connection); $event.stopPropagation()">
+                        <span class="material-symbols-outlined">edit</span>
+                      </button>
+                      <button class="icon-btn danger" title="Delete" (click)="onDeleteConnection(connection); $event.stopPropagation()">
+                        <span class="material-symbols-outlined">delete</span>
+                      </button>
+                    </div>
                   </div>
                 }
               </div>
-              <div class="card-footer">
-                <span class="entry-count">
-                  {{ getEntryCount(connection.id) }} entries
-                </span>
+            }
+            @case ('list') {
+              <div class="list-view">
+                @for (connection of filteredConnections(); track connection.id) {
+                  <div class="list-item-wrapper" [class.selected]="selectedIds().has(connection.id)">
+                    <div class="list-item">
+                      <div class="list-item-checkbox">
+                        <input
+                          type="checkbox"
+                          [checked]="selectedIds().has(connection.id)"
+                          (change)="toggleSelect(connection.id); $event.stopPropagation()"
+                          (click)="$event.stopPropagation()">
+                      </div>
+                      <div class="list-item-main">
+                        <span class="connection-name">{{ connection.name }}</span>
+                        @if (getObjectKeys(connection).length > 2) {
+                          <div class="data-badge small" [title]="formatJson(connection)">
+                            {{ getObjectKeys(connection).length - 2 }} properties
+                          </div>
+                        }
+                      </div>
+                      <div class="list-item-meta">
+                        <span class="source-type-badge" [style.background]="getSourceColor(connection.sourceType.name)">
+                          {{ connection.sourceType.name }}
+                        </span>
+                        <span class="entry-count">{{ getEntryCount(connection.id) }} entries</span>
+                        <div class="list-item-actions">
+                          <button class="icon-btn" title="Edit" (click)="onEditConnection(connection)">
+                            <span class="material-symbols-outlined">edit</span>
+                          </button>
+                          <button class="icon-btn danger" title="Delete" (click)="onDeleteConnection(connection)">
+                            <span class="material-symbols-outlined">delete</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                }
               </div>
-            </div>
+            }
           }
+        </div>
+      }
+
+      <!-- Bulk Actions Bar -->
+      @if (selectedIds().size > 0) {
+        <div class="bulk-actions-bar">
+          <span class="selection-count">{{ selectedIds().size }} selected</span>
+          <cds-button kind="danger" size="sm" (click)="onBulkDelete()">
+            <span class="material-symbols-outlined" slot="icon">delete</span>
+            Delete Selected
+          </cds-button>
         </div>
       }
 
@@ -246,14 +372,53 @@ import { ConnectionParamsEditorComponent } from './components/connection-params-
       }
     }
 
-    .filter-bar {
+    /* Toolbar */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--dc-space-md);
       margin-bottom: var(--dc-header-gap);
+      padding: var(--dc-space-md);
+      background: var(--dc-bg-secondary);
+      border: 1px solid var(--dc-border-subtle);
+      border-radius: var(--dc-radius-md);
+      flex-wrap: wrap;
+    }
+
+    .filters {
+      display: flex;
+      gap: var(--dc-space-sm);
+      flex-wrap: wrap;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .filter-input {
+      flex: 1;
+      min-width: 150px;
+      max-width: 200px;
+      padding: var(--dc-input-padding);
+      background: var(--dc-bg-tertiary);
+      border: 1px solid var(--dc-border-subtle);
+      border-radius: var(--dc-radius-sm);
+      color: var(--dc-text-primary);
+      font-size: var(--dc-text-size-sm);
+
+      &:focus {
+        outline: 2px solid var(--dc-primary);
+        outline-offset: 2px;
+      }
+
+      &::placeholder {
+        color: var(--dc-text-placeholder);
+      }
     }
 
     .type-filters {
       display: flex;
+      gap: var(--dc-space-xs);
       flex-wrap: wrap;
-      gap: var(--dc-space-sm);
     }
 
     .type-filter-btn {
@@ -262,9 +427,10 @@ import { ConnectionParamsEditorComponent } from './components/connection-params-
       border-radius: var(--dc-radius-full);
       background: var(--dc-bg-secondary);
       color: var(--dc-text-secondary);
-      font-size: var(--dc-text-size-base);
+      font-size: var(--dc-text-size-sm);
       cursor: pointer;
       transition: all var(--dc-duration-fast);
+      white-space: nowrap;
 
       &:hover {
         border-color: var(--dc-border-strong);
@@ -275,6 +441,42 @@ import { ConnectionParamsEditorComponent } from './components/connection-params-
         background: var(--type-color, var(--dc-primary));
         border-color: var(--type-color, var(--dc-primary));
         color: white;
+      }
+    }
+
+    /* View Toggle */
+    .view-toggle {
+      display: flex;
+      gap: calc(var(--dc-space-unit) / 2);
+      padding: calc(var(--dc-space-unit) / 2);
+      background: var(--dc-bg-primary);
+      border-radius: var(--dc-radius-sm);
+    }
+
+    .view-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: none;
+      background: transparent;
+      color: var(--dc-text-secondary);
+      cursor: pointer;
+      border-radius: var(--dc-radius-sm);
+      transition: all var(--dc-duration-fast);
+
+      &:hover {
+        color: var(--dc-text-primary);
+      }
+
+      &.active {
+        background: var(--dc-primary);
+        color: white;
+      }
+
+      .material-symbols-outlined {
+        font-size: 20px;
       }
     }
 
@@ -289,27 +491,39 @@ import { ConnectionParamsEditorComponent } from './components/connection-params-
       border: 1px solid var(--dc-border-subtle);
       border-radius: var(--dc-radius-md);
       padding: var(--dc-card-padding);
+      cursor: pointer;
       transition: all var(--dc-duration-fast);
 
       &:hover {
-        border-color: var(--dc-border-strong);
+        border-color: var(--dc-primary);
         box-shadow: var(--dc-shadow-md);
+        transform: translateY(-2px);
+      }
+
+      &.selected {
+        background: var(--dc-bg-selected);
+        border-color: var(--dc-primary);
       }
 
       .card-header {
         display: flex;
         justify-content: space-between;
-        align-items: center;
         margin-bottom: var(--dc-header-gap);
       }
 
-      .card-actions {
+      .card-checkbox {
         display: flex;
-        gap: calc(var(--dc-space-unit) / 2);
+        align-items: center;
+
+        input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
+        }
       }
 
       .card-title {
-        margin: 0 0 var(--dc-header-gap);
+        margin: 0 0 var(--dc-space-xs);
         font-size: var(--dc-text-size-lg);
         font-weight: 600;
         color: var(--dc-text-primary);
@@ -318,41 +532,31 @@ import { ConnectionParamsEditorComponent } from './components/connection-params-
         white-space: nowrap;
       }
 
+      .card-info {
+        margin-bottom: var(--dc-header-gap);
+      }
+
+      .entry-count-badge {
+        display: inline-block;
+        padding: calc(var(--dc-space-unit) / 2) var(--dc-space-unit);
+        background: var(--dc-bg-tertiary);
+        border-radius: var(--dc-radius-full);
+        font-size: var(--dc-text-size-sm);
+        color: var(--dc-text-secondary);
+      }
+
       .card-details {
         display: flex;
         flex-direction: column;
         gap: var(--dc-space-xs);
-        margin-bottom: var(--dc-header-gap);
       }
 
-      .detail-row {
+      .card-actions {
         display: flex;
-        gap: var(--dc-space-sm);
-        font-size: var(--dc-text-size-base);
-      }
-
-      .detail-label {
-        color: var(--dc-text-secondary);
-        min-width: 70px;
-      }
-
-      .detail-value {
-        color: var(--dc-text-primary);
-        font-family: monospace;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        max-width: 180px;
-      }
-
-      .card-footer {
+        gap: calc(var(--dc-space-unit) / 2);
+        margin-top: var(--dc-header-gap);
         padding-top: var(--dc-header-gap);
         border-top: 1px solid var(--dc-border-subtle);
-      }
-
-      .entry-count {
-        font-size: var(--dc-text-size-base);
-        color: var(--dc-text-secondary);
       }
     }
 
@@ -390,6 +594,224 @@ import { ConnectionParamsEditorComponent } from './components/connection-params-
 
       .material-symbols-outlined {
         font-size: 18px;
+      }
+    }
+
+    /* Table View */
+    .table-container {
+      background: var(--dc-bg-secondary);
+      border: 1px solid var(--dc-border-subtle);
+      border-radius: var(--dc-radius-md);
+      overflow: hidden;
+    }
+
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+
+      thead {
+        background: var(--dc-bg-tertiary);
+        border-bottom: 2px solid var(--dc-border);
+      }
+
+      th, td {
+        padding: var(--dc-table-cell-padding);
+        text-align: left;
+      }
+
+      th {
+        font-weight: 600;
+        font-size: var(--dc-text-size-sm);
+        color: var(--dc-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      tbody tr {
+        border-bottom: 1px solid var(--dc-border-subtle);
+        transition: background var(--dc-duration-fast);
+
+        &:hover {
+          background: var(--dc-bg-tertiary);
+        }
+
+        &.selected {
+          background: var(--dc-bg-selected);
+        }
+
+        &:last-child {
+          border-bottom: none;
+        }
+      }
+
+      .checkbox-col {
+        width: 40px;
+
+        input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
+        }
+      }
+
+      .name-col {
+        width: 25%;
+      }
+
+      .type-col {
+        width: 20%;
+      }
+
+      .params-col {
+        width: 30%;
+      }
+
+      .entries-col {
+        width: 15%;
+        text-align: center;
+      }
+
+      .actions-col {
+        width: 10%;
+        text-align: right;
+
+        .icon-btn {
+          margin-left: calc(var(--dc-space-unit) / 2);
+        }
+      }
+
+      .connection-name {
+        font-weight: 500;
+        color: var(--dc-text-primary);
+      }
+
+      .json-preview {
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: var(--dc-text-secondary);
+        cursor: help;
+      }
+    }
+
+    /* List View */
+    .list-view {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--dc-border-subtle);
+      border-radius: var(--dc-radius-md);
+      overflow: hidden;
+    }
+
+    .list-item-wrapper {
+      background: var(--dc-bg-secondary);
+
+      &.selected {
+        background: var(--dc-bg-selected);
+      }
+    }
+
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: var(--dc-table-cell-padding);
+      background: transparent;
+      transition: background var(--dc-duration-fast);
+
+      &:hover {
+        background: var(--dc-bg-tertiary);
+      }
+
+      .list-item-checkbox {
+        display: flex;
+        align-items: center;
+        margin-right: var(--dc-space-xs);
+
+        input[type="checkbox"] {
+          width: 18px;
+          height: 18px;
+          cursor: pointer;
+        }
+      }
+
+      .list-item-main {
+        display: flex;
+        align-items: center;
+        gap: var(--dc-space-sm);
+        flex: 1;
+        min-width: 0;
+      }
+
+      .connection-name {
+        font-weight: 500;
+        color: var(--dc-text-primary);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .list-item-meta {
+        display: flex;
+        align-items: center;
+        gap: var(--dc-space-sm);
+        flex-shrink: 0;
+      }
+
+      .list-item-actions {
+        display: flex;
+        gap: calc(var(--dc-space-unit) / 2);
+        margin-left: var(--dc-space-sm);
+      }
+    }
+
+    .data-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: calc(var(--dc-space-unit) / 2) var(--dc-space-unit);
+      background: var(--dc-bg-tertiary);
+      border-radius: var(--dc-radius-sm);
+      font-size: var(--dc-text-size-sm);
+      color: var(--dc-text-secondary);
+      white-space: nowrap;
+
+      &.small {
+        font-size: var(--dc-text-size-xs);
+        padding: calc(var(--dc-space-unit) / 3) calc(var(--dc-space-unit) * 0.75);
+      }
+    }
+
+    /* Grid View - Additional styles */
+    .card-section {
+      margin-bottom: var(--dc-header-gap);
+
+      h5 {
+        margin: 0 0 var(--dc-space-xs);
+        font-size: var(--dc-text-size-sm);
+        font-weight: 600;
+        color: var(--dc-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+    }
+
+    .detail-item {
+      display: flex;
+      gap: var(--dc-space-xs);
+      font-size: var(--dc-text-size-sm);
+
+      .detail-key {
+        color: var(--dc-text-secondary);
+        min-width: 80px;
+      }
+
+      .detail-value {
+        color: var(--dc-text-primary);
+        font-family: monospace;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
       }
     }
 
@@ -490,15 +912,46 @@ import { ConnectionParamsEditorComponent } from './components/connection-params-
       color: var(--dc-text-secondary);
       font-style: italic;
     }
+
+    /* Bulk Actions Bar */
+    .bulk-actions-bar {
+      position: fixed;
+      bottom: var(--dc-space-lg);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: var(--dc-space-md);
+      padding: var(--dc-space-md);
+      background: var(--dc-bg-primary);
+      border: 1px solid var(--dc-border);
+      border-radius: var(--dc-radius-md);
+      box-shadow: var(--dc-shadow-lg);
+      z-index: 100;
+
+      .selection-count {
+        font-weight: 500;
+        color: var(--dc-text-primary);
+      }
+    }
   `]
 })
 export class SourcesComponent implements OnInit {
   readonly store = inject(CatalogStore);
 
+  readonly nameFilter = signal('');
   readonly selectedType = signal<string | null>(null);
+  readonly currentView = signal<ViewMode>('table');
   readonly showModal = signal(false);
   readonly editingConnection = signal<SourceConnection | null>(null);
   readonly formData = signal<Record<string, unknown>>({ name: '', sourceTypeId: '' });
+  readonly selectedIds = signal<Set<string>>(new Set());
+
+  readonly viewModes = [
+    { id: 'table' as const, label: 'Table View', icon: 'table_rows' },
+    { id: 'grid' as const, label: 'Grid View', icon: 'grid_view' },
+    { id: 'list' as const, label: 'List View', icon: 'view_list' }
+  ];
 
   private readonly sourceTypeColors: Record<string, string> = {
     'DataBridge': 'var(--dc-source-databridge)',
@@ -533,11 +986,19 @@ export class SourcesComponent implements OnInit {
   });
 
   readonly filteredConnections = computed(() => {
+    let connections = this.store.sourceConnections();
+    const name = this.nameFilter().toLowerCase();
     const type = this.selectedType();
-    const connections = this.store.sourceConnections();
 
-    if (!type) return connections;
-    return connections.filter(c => c.sourceType?.name === type);
+    if (name) {
+      connections = connections.filter(c => c.name.toLowerCase().includes(name));
+    }
+
+    if (type) {
+      connections = connections.filter(c => c.sourceType?.name === type);
+    }
+
+    return connections;
   });
 
   readonly selectedSourceType = computed(() => {
@@ -545,14 +1006,22 @@ export class SourcesComponent implements OnInit {
     return this.store.sourceTypes().find(t => t.id === typeId) || null;
   });
 
+  readonly allSelected = computed(() => {
+    const connections = this.filteredConnections();
+    return connections.length > 0 && connections.every(c => this.selectedIds().has(c.id));
+  });
+
+  readonly someSelected = computed(() => {
+    const selected = this.selectedIds();
+    const connections = this.filteredConnections();
+    return connections.some(c => selected.has(c.id)) && !this.allSelected();
+  });
+
   readonly connectionParams = computed(() => {
     const data = this.formData();
     const { name, sourceTypeId, ...params } = data;
     return params;
   });
-
-  // DataBridge sourceType ID - should be configured based on your API
-  private readonly DATABRIDGE_TYPE_ID = 'databridge';
 
   ngOnInit(): void {
     if (this.store.sourceConnections().length === 0) {
@@ -562,9 +1031,7 @@ export class SourcesComponent implements OnInit {
 
   isDataBridgeType(): boolean {
     const selectedType = this.selectedSourceType();
-    // Check by ID instead of name
-    return selectedType?.id.toLowerCase() === this.DATABRIDGE_TYPE_ID ||
-           selectedType?.name.toLowerCase() === 'databridge';
+    return selectedType?.id === SOURCE_TYPE_IDS.DATABRIDGE;
   }
 
   getConnectionParams(): Record<string, unknown> {
@@ -597,6 +1064,37 @@ export class SourcesComponent implements OnInit {
     this.selectedType.set(type);
   }
 
+  onNameFilterChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.nameFilter.set(input.value);
+  }
+
+  setView(view: ViewMode): void {
+    this.currentView.set(view);
+  }
+
+  getObjectKeys(obj: Record<string, unknown> | undefined): string[] {
+    return obj ? Object.keys(obj) : [];
+  }
+
+  formatObjectValue(value: unknown): string {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  }
+
+  getObjectPreview(obj: Record<string, unknown> | undefined): string {
+    if (!obj) return '-';
+    const keys = Object.keys(obj);
+    if (keys.length === 0) return '-';
+    if (keys.length === 1) return `${keys[0]}: ${this.formatObjectValue(obj[keys[0]])}`;
+    return `${keys.length} properties`;
+  }
+
+  formatJson(obj: Record<string, unknown> | undefined): string {
+    return obj ? JSON.stringify(obj, null, 2) : '{}';
+  }
+
   openCreateModal(): void {
     this.editingConnection.set(null);
     this.formData.set({ name: '', sourceTypeId: '' });
@@ -622,6 +1120,49 @@ export class SourcesComponent implements OnInit {
     }
     if (confirm(`Delete "${connection.name}"?`)) {
       this.store.deleteSourceConnections([connection.id]);
+    }
+  }
+
+  toggleSelect(id: string): void {
+    this.selectedIds.update(ids => {
+      const newSet = new Set(ids);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }
+
+  toggleSelectAll(): void {
+    if (this.allSelected()) {
+      this.selectedIds.set(new Set());
+    } else {
+      const allIds = this.filteredConnections().map(c => c.id);
+      this.selectedIds.set(new Set(allIds));
+    }
+  }
+
+  clearSelection(): void {
+    this.selectedIds.set(new Set());
+  }
+
+  onBulkDelete(): void {
+    const count = this.selectedIds().size;
+    const connections = this.store.sourceConnections().filter(c => this.selectedIds().has(c.id));
+
+    // Check if any selected connections have entries
+    const connectionsWithEntries = connections.filter(c => this.getEntryCount(c.id) > 0);
+    if (connectionsWithEntries.length > 0) {
+      const names = connectionsWithEntries.map(c => c.name).join(', ');
+      alert(`Cannot delete connections with entries: ${names}`);
+      return;
+    }
+
+    if (confirm(`Delete ${count} source connections?`)) {
+      this.store.deleteSourceConnections(Array.from(this.selectedIds()));
+      this.clearSelection();
     }
   }
 

@@ -63,12 +63,24 @@ export function getLabelColor(labelName: string): string {
         </cds-button>
       </header>
 
+      <!-- Filters -->
+      @if (store.labels().length > 0) {
+        <div class="filters-bar">
+          <input
+            type="text"
+            class="filter-input"
+            placeholder="Filter by name..."
+            [value]="nameFilter()"
+            (input)="onNameFilterChange($event)">
+        </div>
+      }
+
       @if (store.loading()) {
         <div class="loading-state">
           <span class="material-symbols-outlined animate-pulse">sync</span>
           <p>Loading labels...</p>
         </div>
-      } @else if (store.labels().length === 0) {
+      } @else if (filteredLabels().length === 0 && store.labels().length === 0) {
         <div class="empty-state">
           <span class="material-symbols-outlined">label</span>
           <h2>No labels yet</h2>
@@ -78,10 +90,16 @@ export function getLabelColor(labelName: string): string {
             Create Label
           </cds-button>
         </div>
+      } @else if (filteredLabels().length === 0) {
+        <div class="empty-state">
+          <span class="material-symbols-outlined">search_off</span>
+          <h2>No matching labels</h2>
+          <p>Try adjusting your filter</p>
+        </div>
       } @else {
         <div class="labels-grid">
-          @for (label of store.labels(); track label.id) {
-            <div class="label-card" [class.editing]="editingLabel()?.id === label.id">
+          @for (label of filteredLabels(); track label.id) {
+            <div class="label-card" [class.editing]="editingLabel()?.id === label.id" [class.selected]="selectedIds().has(label.id)">
               @if (editingLabel()?.id === label.id) {
                 <div class="edit-mode">
                   <input
@@ -101,6 +119,13 @@ export function getLabelColor(labelName: string): string {
                   </div>
                 </div>
               } @else {
+                <div class="label-checkbox">
+                  <input
+                    type="checkbox"
+                    [checked]="selectedIds().has(label.id)"
+                    (change)="toggleSelect(label.id); $event.stopPropagation()"
+                    (click)="$event.stopPropagation()">
+                </div>
                 <div class="label-content">
                   <span class="label-badge" [style.background]="getLabelColor(label.name)">
                     <span class="material-symbols-outlined">label</span>
@@ -145,6 +170,17 @@ export function getLabelColor(labelName: string): string {
             }
           </div>
         </section>
+      }
+
+      <!-- Bulk Actions Bar -->
+      @if (selectedIds().size > 0) {
+        <div class="bulk-actions-bar">
+          <span class="selection-count">{{ selectedIds().size }} selected</span>
+          <cds-button kind="danger" size="sm" (click)="onBulkDelete()">
+            <span class="material-symbols-outlined" slot="icon">delete</span>
+            Delete Selected
+          </cds-button>
+        </div>
       }
 
       <!-- Create Modal -->
@@ -260,6 +296,23 @@ export function getLabelColor(labelName: string): string {
 
       &.editing {
         border-color: var(--dc-primary);
+      }
+
+      &.selected {
+        background: var(--dc-bg-selected);
+        border-color: var(--dc-primary);
+      }
+    }
+
+    .label-checkbox {
+      display: flex;
+      align-items: center;
+      margin-right: var(--dc-space-md);
+
+      input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
       }
     }
 
@@ -486,6 +539,56 @@ export function getLabelColor(labelName: string): string {
         border-color: var(--dc-primary);
       }
     }
+
+    /* Filters Bar */
+    .filters-bar {
+      margin-bottom: var(--dc-space-xl);
+      padding: var(--dc-space-md);
+      background: var(--dc-bg-secondary);
+      border: 1px solid var(--dc-border-subtle);
+      border-radius: var(--dc-radius-md);
+    }
+
+    .filter-input {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--dc-bg-tertiary);
+      border: 1px solid var(--dc-border-subtle);
+      border-radius: var(--dc-radius-sm);
+      color: var(--dc-text-primary);
+      font-size: 0.875rem;
+
+      &:focus {
+        outline: none;
+        border-color: var(--dc-primary);
+      }
+
+      &::placeholder {
+        color: var(--dc-text-secondary);
+      }
+    }
+
+    /* Bulk Actions Bar */
+    .bulk-actions-bar {
+      position: fixed;
+      bottom: var(--dc-space-lg);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: var(--dc-space-md);
+      padding: var(--dc-space-md);
+      background: var(--dc-bg-primary);
+      border: 1px solid var(--dc-border);
+      border-radius: var(--dc-radius-md);
+      box-shadow: var(--dc-shadow-lg);
+      z-index: 100;
+
+      .selection-count {
+        font-weight: 500;
+        color: var(--dc-text-primary);
+      }
+    }
   `]
 })
 export class LabelsComponent implements OnInit {
@@ -495,7 +598,15 @@ export class LabelsComponent implements OnInit {
   readonly newLabelName = signal('');
   readonly editingLabel = signal<Label | null>(null);
   readonly editName = signal('');
+  readonly nameFilter = signal('');
+  readonly selectedIds = signal<Set<string>>(new Set());
   private defaultLabelsCreated = false;
+
+  readonly filteredLabels = computed(() => {
+    const name = this.nameFilter().toLowerCase();
+    if (!name) return this.store.labels();
+    return this.store.labels().filter(l => l.name.toLowerCase().includes(name));
+  });
 
   readonly labelStats = computed(() => {
     const labels = this.store.labels();
@@ -510,6 +621,17 @@ export class LabelsComponent implements OnInit {
       }))
       .filter(stat => stat.count > 0)
       .sort((a, b) => b.count - a.count);
+  });
+
+  readonly allSelected = computed(() => {
+    const labels = this.filteredLabels();
+    return labels.length > 0 && labels.every(l => this.selectedIds().has(l.id));
+  });
+
+  readonly someSelected = computed(() => {
+    const selected = this.selectedIds();
+    const labels = this.filteredLabels();
+    return labels.some(l => selected.has(l.id)) && !this.allSelected();
   });
 
   ngOnInit(): void {
@@ -579,6 +701,11 @@ export class LabelsComponent implements OnInit {
     this.editName.set(input.value);
   }
 
+  onNameFilterChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.nameFilter.set(input.value);
+  }
+
   saveEdit(): void {
     const label = this.editingLabel();
     const name = this.editName().trim();
@@ -602,6 +729,39 @@ export class LabelsComponent implements OnInit {
 
     if (confirm(message)) {
       this.store.deleteLabels([label.id]);
+    }
+  }
+
+  toggleSelect(id: string): void {
+    this.selectedIds.update(ids => {
+      const newSet = new Set(ids);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }
+
+  toggleSelectAll(): void {
+    if (this.allSelected()) {
+      this.selectedIds.set(new Set());
+    } else {
+      const allIds = this.filteredLabels().map(l => l.id);
+      this.selectedIds.set(new Set(allIds));
+    }
+  }
+
+  clearSelection(): void {
+    this.selectedIds.set(new Set());
+  }
+
+  onBulkDelete(): void {
+    const count = this.selectedIds().size;
+    if (confirm(`Delete ${count} labels?`)) {
+      this.store.deleteLabels(Array.from(this.selectedIds()));
+      this.clearSelection();
     }
   }
 }

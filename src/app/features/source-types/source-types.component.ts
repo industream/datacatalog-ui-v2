@@ -1,4 +1,4 @@
-import { Component, CUSTOM_ELEMENTS_SCHEMA, inject, OnInit, signal } from '@angular/core';
+import { Component, CUSTOM_ELEMENTS_SCHEMA, inject, OnInit, signal, computed } from '@angular/core';
 
 import '@carbon/web-components/es/components/button/index.js';
 
@@ -22,12 +22,45 @@ import type { SourceType } from '@industream/datacatalog-client/dto';
         </cds-button>
       </header>
 
+      <!-- Filters -->
+      @if (store.sourceTypes().length > 0) {
+        <div class="filters-bar">
+          <input
+            type="text"
+            class="filter-input"
+            placeholder="Filter by name..."
+            [value]="nameFilter()"
+            (input)="onNameFilterChange($event)">
+
+          <div class="filter-buttons">
+            <button
+              class="filter-btn"
+              [class.active]="protectionFilter() === null"
+              (click)="protectionFilter.set(null)">
+              All ({{ store.sourceTypes().length }})
+            </button>
+            <button
+              class="filter-btn"
+              [class.active]="protectionFilter() === false"
+              (click)="protectionFilter.set(false)">
+              Non-Protected ({{ countNonProtected() }})
+            </button>
+            <button
+              class="filter-btn"
+              [class.active]="protectionFilter() === true"
+              (click)="protectionFilter.set(true)">
+              Protected ({{ countProtected() }})
+            </button>
+          </div>
+        </div>
+      }
+
       @if (store.loading()) {
         <div class="loading-state">
           <span class="material-symbols-outlined animate-pulse">sync</span>
           <p>Loading source types...</p>
         </div>
-      } @else if (store.sourceTypes().length === 0) {
+      } @else if (filteredTypes().length === 0 && store.sourceTypes().length === 0) {
         <div class="empty-state">
           <span class="material-symbols-outlined">category</span>
           <h2>No source types</h2>
@@ -37,10 +70,16 @@ import type { SourceType } from '@industream/datacatalog-client/dto';
             Create Source Type
           </cds-button>
         </div>
+      } @else if (filteredTypes().length === 0) {
+        <div class="empty-state">
+          <span class="material-symbols-outlined">search_off</span>
+          <h2>No matching source types</h2>
+          <p>Try adjusting your filters</p>
+        </div>
       } @else {
         <div class="types-grid">
-          @for (type of store.sourceTypes(); track type.id) {
-            <div class="type-card" [class.editing]="editingType()?.id === type.id" [class.protected]="type.isProtected">
+          @for (type of filteredTypes(); track type.id) {
+            <div class="type-card" [class.editing]="editingType()?.id === type.id" [class.protected]="type.isProtected" [class.selected]="selectedIds().has(type.id)">
               @if (editingType()?.id === type.id && !type.isProtected) {
                 <div class="edit-mode">
                   <input
@@ -60,6 +99,15 @@ import type { SourceType } from '@industream/datacatalog-client/dto';
                   </div>
                 </div>
               } @else {
+                @if (!type.isProtected) {
+                  <div class="type-checkbox">
+                    <input
+                      type="checkbox"
+                      [checked]="selectedIds().has(type.id)"
+                      (change)="toggleSelect(type.id); $event.stopPropagation()"
+                      (click)="$event.stopPropagation()">
+                  </div>
+                }
                 <div class="type-content">
                   <div class="type-header">
                     <span class="type-name" [style]="type.isProtected ? 'color: var(--dc-warning);' : ''">
@@ -86,6 +134,17 @@ import type { SourceType } from '@industream/datacatalog-client/dto';
               }
             </div>
           }
+        </div>
+      }
+
+      <!-- Bulk Actions Bar -->
+      @if (selectedIds().size > 0) {
+        <div class="bulk-actions-bar">
+          <span class="selection-count">{{ selectedIds().size }} selected</span>
+          <cds-button kind="danger" size="sm" (click)="onBulkDelete()">
+            <span class="material-symbols-outlined" slot="icon">delete</span>
+            Delete Selected
+          </cds-button>
         </div>
       }
 
@@ -205,6 +264,44 @@ import type { SourceType } from '@industream/datacatalog-client/dto';
 
       &.protected {
         background: color-mix(in srgb, var(--dc-bg-secondary) 95%, var(--dc-warning) 5%);
+      }
+
+      &.selected {
+        background: var(--dc-bg-selected);
+        border-color: var(--dc-primary);
+      }
+    }
+
+    .type-checkbox {
+      display: flex;
+      align-items: center;
+      margin-right: var(--dc-space-md);
+
+      input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+      }
+    }
+
+    .bulk-actions-bar {
+      position: fixed;
+      bottom: var(--dc-space-lg);
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: var(--dc-space-md);
+      padding: var(--dc-space-md);
+      background: var(--dc-bg-primary);
+      border: 1px solid var(--dc-border);
+      border-radius: var(--dc-radius-md);
+      box-shadow: var(--dc-shadow-lg);
+      z-index: 100;
+
+      .selection-count {
+        font-weight: 500;
+        color: var(--dc-text-primary);
       }
     }
 
@@ -392,6 +489,66 @@ import type { SourceType } from '@industream/datacatalog-client/dto';
         border-color: var(--dc-primary);
       }
     }
+
+    /* Filters Bar */
+    .filters-bar {
+      display: flex;
+      gap: var(--dc-space-md);
+      margin-bottom: var(--dc-space-xl);
+      padding: var(--dc-space-md);
+      background: var(--dc-bg-secondary);
+      border: 1px solid var(--dc-border-subtle);
+      border-radius: var(--dc-radius-md);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .filter-input {
+      flex: 1;
+      min-width: 200px;
+      padding: 8px 12px;
+      background: var(--dc-bg-tertiary);
+      border: 1px solid var(--dc-border-subtle);
+      border-radius: var(--dc-radius-sm);
+      color: var(--dc-text-primary);
+      font-size: 0.875rem;
+
+      &:focus {
+        outline: none;
+        border-color: var(--dc-primary);
+      }
+
+      &::placeholder {
+        color: var(--dc-text-secondary);
+      }
+    }
+
+    .filter-buttons {
+      display: flex;
+      gap: var(--dc-space-xs);
+    }
+
+    .filter-btn {
+      padding: 6px 12px;
+      background: var(--dc-bg-tertiary);
+      border: 1px solid var(--dc-border-subtle);
+      border-radius: var(--dc-radius-sm);
+      color: var(--dc-text-secondary);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all var(--dc-duration-fast);
+
+      &:hover {
+        border-color: var(--dc-border-strong);
+        color: var(--dc-text-primary);
+      }
+
+      &.active {
+        background: var(--dc-primary);
+        border-color: var(--dc-primary);
+        color: white;
+      }
+    }
   `]
 })
 export class SourceTypesComponent implements OnInit {
@@ -401,11 +558,54 @@ export class SourceTypesComponent implements OnInit {
   readonly newTypeName = signal('');
   readonly editingType = signal<SourceType | null>(null);
   readonly editName = signal('');
+  readonly nameFilter = signal('');
+  readonly protectionFilter = signal<boolean | null>(null);
+  readonly selectedIds = signal<Set<string>>(new Set());
+
+  readonly filteredTypes = computed(() => {
+    let types = this.store.sourceTypes();
+    const name = this.nameFilter().toLowerCase();
+    const protection = this.protectionFilter();
+
+    if (name) {
+      types = types.filter(t => t.name.toLowerCase().includes(name));
+    }
+
+    if (protection !== null) {
+      types = types.filter(t => t.isProtected === protection);
+    }
+
+    return types;
+  });
+
+  readonly countProtected = computed(() =>
+    this.store.sourceTypes().filter(t => t.isProtected).length
+  );
+
+  readonly countNonProtected = computed(() =>
+    this.store.sourceTypes().filter(t => !t.isProtected).length
+  );
+
+  readonly allSelected = computed(() => {
+    const types = this.filteredTypes().filter(t => !t.isProtected);
+    return types.length > 0 && types.every(t => this.selectedIds().has(t.id));
+  });
+
+  readonly someSelected = computed(() => {
+    const selected = this.selectedIds();
+    const types = this.filteredTypes().filter(t => !t.isProtected);
+    return types.some(t => selected.has(t.id)) && !this.allSelected();
+  });
 
   ngOnInit(): void {
     if (this.store.sourceTypes().length === 0) {
       this.store.loadAll();
     }
+  }
+
+  onNameFilterChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.nameFilter.set(input.value);
   }
 
   getConnectionCount(typeId: string): number {
@@ -477,6 +677,49 @@ export class SourceTypesComponent implements OnInit {
 
     if (confirm(`Delete "${type.name}"?`)) {
       this.store.deleteSourceTypes([type.id]);
+    }
+  }
+
+  toggleSelect(id: string): void {
+    this.selectedIds.update(ids => {
+      const newSet = new Set(ids);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  }
+
+  toggleSelectAll(): void {
+    if (this.allSelected()) {
+      this.selectedIds.set(new Set());
+    } else {
+      const allIds = this.filteredTypes().filter(t => !t.isProtected).map(t => t.id);
+      this.selectedIds.set(new Set(allIds));
+    }
+  }
+
+  clearSelection(): void {
+    this.selectedIds.set(new Set());
+  }
+
+  onBulkDelete(): void {
+    const count = this.selectedIds().size;
+    const types = this.store.sourceTypes().filter(t => this.selectedIds().has(t.id));
+
+    // Check if any selected types have connections
+    const typesWithConnections = types.filter(t => this.getConnectionCount(t.id) > 0);
+    if (typesWithConnections.length > 0) {
+      const names = typesWithConnections.map(t => t.name).join(', ');
+      alert(`Cannot delete source types with connections: ${names}`);
+      return;
+    }
+
+    if (confirm(`Delete ${count} source types?`)) {
+      this.store.deleteSourceTypes(Array.from(this.selectedIds()));
+      this.clearSelection();
     }
   }
 }
